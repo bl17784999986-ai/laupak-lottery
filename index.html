@@ -1,0 +1,2864 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>体彩·福彩全彩种推盘预测模拟器 — 四维分析引擎 v3.0</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-main: #090e17;
+      --bg-panel: #0f1724;
+      --bg-card: #131d2e;
+      --bg-card-hover: #18253a;
+      --border-dim: #1e2d44;
+      --border-active: #10b981;
+      --text-primary: #e2e8f0;
+      --text-muted: #7e92b0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      overflow-x: hidden;
+    }
+    /* Custom dark scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b111b; }
+    ::-webkit-scrollbar-thumb { background: #23344d; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334c6e; }
+
+    .panel-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-dim);
+      border-radius: 12px;
+    }
+    .card-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      transition: border-color 0.18s ease, background-color 0.18s ease;
+    }
+    .card-box:hover { border-color: #2c4160; }
+    .card-active {
+      border-color: #10b981 !important;
+      background: linear-gradient(180deg, rgba(16,185,129,0.10) 0%, rgba(19,29,46,1) 100%) !important;
+      box-shadow: 0 0 0 1px rgba(16,185,129,0.28);
+    }
+
+    /* Lottery balls */
+    .ball {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      border-radius: 9999px;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .ball-sm { width: 24px; height: 24px; font-size: 11px; }
+    .ball-md { width: 30px; height: 30px; font-size: 12px; }
+    .ball-lg { width: 34px; height: 34px; font-size: 13px; cursor: pointer; }
+    .ball-red {
+      background: radial-gradient(circle at 30% 30%, #fb7185, #e11d48 70%, #9f1239);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(225,29,72,0.35);
+    }
+    .ball-blue {
+      background: radial-gradient(circle at 30% 30%, #38bdf8, #0284c7 70%, #075985);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(2,132,199,0.35);
+    }
+    .ball-amber {
+      background: radial-gradient(circle at 30% 30%, #fbbf24, #d97706 70%, #92400e);
+      color: #0b111b;
+      box-shadow: 0 2px 6px rgba(217,119,6,0.35);
+    }
+    .ball-emerald {
+      background: radial-gradient(circle at 30% 30%, #34d399, #059669 70%, #065f46);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(5,150,105,0.35);
+    }
+    .ball-purple {
+      background: radial-gradient(circle at 30% 30%, #a78bfa, #7c3aed 70%, #4c1d95);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(124,58,237,0.35);
+    }
+    .ball-idle {
+      background: #162235;
+      color: #94a3b8;
+      border: 1px solid #263954;
+    }
+    .ball-idle:hover {
+      border-color: #38bdf8;
+      color: #e2e8f0;
+      transform: translateY(-1px);
+    }
+    .ball-dan {
+      outline: 2px solid #f59e0b;
+      outline-offset: 1px;
+    }
+
+    /* Range slider */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 5px;
+      border-radius: 999px;
+      background: #1e2d44;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #10b981;
+      cursor: pointer;
+      border: 2px solid #090e17;
+      box-shadow: 0 0 8px rgba(16,185,129,0.6);
+    }
+
+    .dim-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 5px;
+      letter-spacing: 0.02em;
+    }
+    .toast-enter {
+      animation: slideUp 0.25s ease forwards;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP NAVIGATION BAR (1:1 Reference Style) -->
+  <header class="sticky top-0 z-30 bg-[#0b111c]/95 backdrop-blur border-b border-[#1d2c42]">
+    <div class="max-w-[1680px] mx-auto px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <!-- Left Brand -->
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-9 h-9 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 3a9 9 0 0 1 6.36 15.36M3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.7 4 5.8 4 9s-1.5 6.3-4 9c-2.5-2.7-4-5.8-4-9s1.5-6.3 4-9z"></path>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base sm:text-lg font-bold text-slate-100 tracking-tight truncate">体彩·福彩全彩种推盘预测模拟器</h1>
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">四维分析引擎 v3.0</span>
+          </div>
+          <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 flex-wrap">
+            <button id="btnDateCalendar" type="button" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#142033] border border-[#243652] text-slate-200 hover:border-emerald-500/50 transition">
+              <span>📅 2026-11-24 星期二</span>
+              <span class="text-emerald-400">开奖日历 ▾</span>
+            </button>
+            <span id="syncStatusText" class="text-emerald-400/90">• 已加载官方库数据 (7大彩种 · 实时统计)</span>
+            <span id="liveClock" class="text-slate-500 font-mono">15:03:09</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Action Buttons -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button id="btnOpenReviewModal" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/35 hover:bg-amber-500/25 transition flex items-center gap-1.5">
+          <span>📋</span>
+          <span>每日复盘区 (<span id="topReviewCount">0</span>)</span>
+        </button>
+        <button id="btnOpenImportModal" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#152236] text-sky-300 border border-[#284063] hover:border-sky-400/60 transition flex items-center gap-1.5">
+          <span>📥</span>
+          <span>导入/云函数配置</span>
+        </button>
+        <button id="btnSyncLive" type="button" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/30 transition flex items-center gap-1.5">
+          <span id="syncSpinIcon">🔄</span>
+          <span>同步实时开奖</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Data Sources Sub-bar -->
+    <div class="border-t border-[#162235] bg-[#0a101a]">
+      <div class="max-w-[1680px] mx-auto px-3 sm:px-5 py-1.5 flex items-center justify-between gap-2 flex-wrap text-[11px]">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-slate-500 mr-1">同步数据源:</span>
+          <a href="https://trend.zgzcw.com/ssq/analyse!index.action" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-[#131e30] border border-[#21334d] text-sky-300 hover:border-sky-400 transition">双色球走势 ↗</a>
+          <a href="https://cp.zgzcw.com/lottery/ssq/index.jsp" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-[#131e30] border border-[#21334d] text-rose-300 hover:border-rose-400 transition">足彩网双色球 ↗</a>
+          <a href="https://cp.zgzcw.com/lottery/3d/index.jsp" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-[#131e30] border border-[#21334d] text-amber-300 hover:border-amber-400 transition">足彩网3D ↗</a>
+          <a href="https://cp.zgzcw.com/lottery/dlt/index.jsp" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-[#131e30] border border-[#21334d] text-emerald-300 hover:border-emerald-400 transition">足彩网大乐透 ↗</a>
+          <a href="https://cp.zgzcw.com/lottery/7xc/index.jsp" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-[#131e30] border border-[#21334d] text-cyan-300 hover:border-cyan-400 transition">足彩网七星彩 ↗</a>
+          <a href="https://cp.zgzcw.com/lottery/pl3/index.jsp" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-[#131e30] border border-[#21334d] text-indigo-300 hover:border-indigo-400 transition">足彩网排列三 ↗</a>
+          <a href="https://cp.zgzcw.com/lottery/pl5/index.jsp" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-[#131e30] border border-[#21334d] text-purple-300 hover:border-purple-400 transition">足彩网排列五 ↗</a>
+          <a href="https://www.zhcw.com/kjxx/3d/?type=0" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-[#131e30] border border-[#21334d] text-orange-300 hover:border-orange-400 transition">中彩网3D ↗</a>
+          <a href="https://sports.163.com/caipiao" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded bg-[#131e30] border border-[#21334d] text-teal-300 hover:border-teal-400 transition">网易彩票大厅 ↗</a>
+        </div>
+        <div class="text-slate-500 hidden xl:block">
+          分析准则：客观中立 · 拒绝“稳中/必中”绝对化用词 · 基于真实历史遗漏与概率分布推演
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN 3-COLUMN WORKSPACE -->
+  <main class="flex-1 max-w-[1680px] w-full mx-auto px-3 sm:px-5 py-4 grid grid-cols-1 lg:grid-cols-[310px_minmax(0,1fr)_345px] gap-4 items-start">
+
+    <!-- LEFT COLUMN: LOTTERY LIST -->
+    <aside class="panel-box p-3 flex flex-col gap-3 lg:sticky lg:top-[106px] lg:max-h-[calc(100vh-120px)]">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-bold text-slate-100">全彩种开奖列表</h2>
+        <span id="leftCountBadge" class="text-xs text-slate-400">7 彩种</span>
+      </div>
+
+      <!-- Search -->
+      <div class="relative">
+        <input id="searchInput" type="text" placeholder="搜索彩种、期号或玩法（如：双色球 / 3D）..." class="w-full bg-[#0a101b] border border-[#1f304a] rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500/60" />
+      </div>
+
+      <!-- Category Tabs -->
+      <div class="flex items-center gap-1.5 text-xs" id="catFilterBar">
+        <button data-cat="all" type="button" class="cat-tab px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white">全部 (7)</button>
+        <button data-cat="fc" type="button" class="cat-tab px-2.5 py-1 rounded-md font-medium bg-[#142033] text-slate-300 hover:text-white">福利彩票 (3)</button>
+        <button data-cat="tc" type="button" class="cat-tab px-2.5 py-1 rounded-md font-medium bg-[#142033] text-slate-300 hover:text-white">体育彩票 (4)</button>
+      </div>
+
+      <!-- Type Sub-Tabs -->
+      <div class="grid grid-cols-4 gap-1 text-[11px]" id="typeFilterBar">
+        <button data-type="all" type="button" class="type-tab py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-semibold">全玩法</button>
+        <button data-type="lotto" type="button" class="type-tab py-1 rounded bg-[#121c2c] text-slate-400 border border-[#1e2d44] hover:text-slate-200">乐透型</button>
+        <button data-type="digit" type="button" class="type-tab py-1 rounded bg-[#121c2c] text-slate-400 border border-[#1e2d44] hover:text-slate-200">数字型</button>
+        <button data-type="today" type="button" class="type-tab py-1 rounded bg-[#121c2c] text-slate-400 border border-[#1e2d44] hover:text-slate-200">今日开奖</button>
+      </div>
+
+      <!-- Scrollable Cards -->
+      <div id="lotteryListContainer" class="flex flex-col gap-2.5 overflow-y-auto pr-0.5" style="max-height: calc(100vh - 285px);"></div>
+    </aside>
+
+    <!-- CENTER COLUMN: 4D ANALYSIS ENGINE -->
+    <section class="flex flex-col gap-4 min-w-0">
+
+      <!-- Active Lottery Hero Header & One-Click Draw Sync/Settlement -->
+      <div class="panel-box p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#1b293e]">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span id="heroOrgBadge" class="text-[11px] font-bold px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30">福彩 · 官方开奖</span>
+            <span id="heroScheduleText" class="text-xs text-slate-400">每周二、四、日 21:15 开奖</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <span id="heroCutoffText" class="text-slate-400">停售 20:00 · 开奖 21:15</span>
+            <span id="heroStatusPill" class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-semibold">推演中</span>
+          </div>
+        </div>
+
+        <!-- Center Title & Latest Draw -->
+        <div class="py-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-[#1b293e]">
+          <div class="text-center sm:text-left">
+            <div class="flex items-center justify-center sm:justify-start gap-2.5">
+              <h2 id="heroName" class="text-2xl font-extrabold text-white tracking-tight">双色球</h2>
+              <span id="heroNextIssue" class="text-sm font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/35">预测第 2026135 期</span>
+            </div>
+            <p id="heroRuleDesc" class="text-xs text-slate-400 mt-1.5">红球 01-33 选 6 + 蓝球 01-16 选 1 · 单注 2 元 · 最高单注 1000 万</p>
+          </div>
+          <div class="text-center sm:text-right">
+            <div class="text-[11px] text-slate-400 mb-1">上期真实开奖 (<span id="heroLastIssue" class="text-slate-200 font-semibold">2026134期</span> · <span id="heroLastDate">2026-11-22</span>)</div>
+            <div id="heroLastBalls" class="flex items-center justify-center sm:justify-end gap-1.5 flex-wrap"></div>
+            <div id="heroJackpot" class="text-[11px] text-amber-400/90 mt-1.5 font-medium">奖池滚存：1,154,982,023 元</div>
+          </div>
+        </div>
+
+        <!-- One-Click Result Check & Advance Next Issue Bar -->
+        <div class="pt-3.5">
+          <div class="text-[11px] text-slate-400 mb-2 flex items-center justify-between flex-wrap gap-2">
+            <span>开奖结果一键录入与自动复盘（输入当期开奖号即可一键核对所有推盘单是否命中，并自动更新下一期数据）</span>
+            <button id="btnAutoFillSampleDraw" type="button" class="text-sky-400 hover:text-sky-300 underline">填入上期号测试核对</button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <input id="drawResultInput" type="text" placeholder="格式示例：04 05 10 17 21 32 + 08" class="flex-1 min-w-[210px] bg-[#0a101b] border border-[#243652] rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-emerald-500" />
+            <button id="btnVerifyDrawAndAdvance" type="button" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition">
+              一键核对中奖 & 更新下期
+            </button>
+            <button id="btnToggleHistoryDrawer" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#162235] hover:bg-[#1e2f49] text-slate-200 border border-[#263a57] transition">
+              近10期历史 ▾
+            </button>
+          </div>
+          <div id="historyDrawer" class="hidden mt-3 bg-[#0a101b] border border-[#1d2c42] rounded-lg p-3 overflow-x-auto"></div>
+        </div>
+      </div>
+
+      <!-- INTERACTIVE PARAMETER SANDBOX (Matching "盘口与战意推演沙盘") -->
+      <div class="panel-box p-4">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <h3 class="text-sm font-bold text-slate-100">参数与策略推演沙盘 (实时重算四维研判)</h3>
+          </div>
+          <button id="btnResetWeights" type="button" class="text-[11px] px-2.5 py-1 rounded bg-[#162235] text-slate-300 border border-[#243652] hover:border-emerald-500/50 transition">恢复默认权重</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg p-3">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-400">热码追击权重</span>
+              <span id="valHotWeight" class="font-bold text-rose-400 font-mono">65</span>
+            </div>
+            <input id="sliderHot" type="range" min="0" max="100" value="65" class="w-full" />
+            <div class="text-[10px] text-slate-500 mt-1">调高偏向近10期高频活跃号</div>
+          </div>
+          <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg p-3">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-400">冷码遗漏回补</span>
+              <span id="valColdWeight" class="font-bold text-sky-400 font-mono">55</span>
+            </div>
+            <input id="sliderCold" type="range" min="0" max="100" value="55" class="w-full" />
+            <div class="text-[10px] text-slate-500 mt-1">调高偏向长期未出高遗漏号</div>
+          </div>
+          <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg p-3">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-400">奇偶大小均衡</span>
+              <span id="valBalanceWeight" class="font-bold text-emerald-400 font-mono">70</span>
+            </div>
+            <input id="sliderBalance" type="range" min="0" max="100" value="70" class="w-full" />
+            <div class="text-[10px] text-slate-500 mt-1">约束和值/奇偶向理论均值靠拢</div>
+          </div>
+          <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg p-3">
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-400">重号邻号倾向</span>
+              <span id="valRepeatWeight" class="font-bold text-amber-400 font-mono">45</span>
+            </div>
+            <input id="sliderRepeat" type="range" min="0" max="100" value="45" class="w-full" />
+            <div class="text-[10px] text-slate-500 mt-1">增加上期重号与±1斜连号权重</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DIMENSION 01 -->
+      <div class="panel-box p-4">
+        <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <div class="flex items-center gap-2">
+            <span class="dim-tag bg-sky-500/15 text-sky-400 border border-sky-500/30">维度 01</span>
+            <h3 class="text-sm font-bold text-slate-100">【基本面】近10期真实走势、高频热码与冷热遗漏解构</h3>
+          </div>
+          <span id="dim1SampleTag" class="text-[11px] text-slate-400">统计样本：近 10 期真实开奖</span>
+        </div>
+        <div id="dim1Content" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+
+      <!-- DIMENSION 02 -->
+      <div class="panel-box p-4">
+        <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <div class="flex items-center gap-2">
+            <span class="dim-tag bg-amber-500/15 text-amber-300 border border-amber-500/30">维度 02</span>
+            <h3 class="text-sm font-bold text-slate-100">【数据面】和值、跨度、奇偶比、大小比与区间走势</h3>
+          </div>
+          <span id="dim2SummaryPill" class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">指标均衡</span>
+        </div>
+
+        <div id="dim2TableContainer" class="overflow-x-auto mb-3"></div>
+
+        <!-- Signal Radar Callout (matching screenshot) -->
+        <div id="dim2RadarBox" class="bg-[#121830] border border-indigo-500/30 rounded-lg p-3 mb-3 text-xs"></div>
+
+        <!-- Chart.js Container (Fixed Height) -->
+        <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg p-3">
+          <div class="flex items-center justify-between mb-2">
+            <span id="chartTitle" class="text-xs font-semibold text-slate-300">近10期和值与跨度动态走势</span>
+            <span class="text-[11px] text-slate-500">基于官方历史开奖实时计算</span>
+          </div>
+          <div class="relative h-56 w-full">
+            <canvas id="trendChartCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- DIMENSION 03 -->
+      <div class="panel-box p-4">
+        <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <div class="flex items-center gap-2">
+            <span class="dim-tag bg-rose-500/15 text-rose-400 border border-rose-500/30">维度 03</span>
+            <h3 class="text-sm font-bold text-slate-100">【形态预警】杀号排雷与高遗漏回补指数</h3>
+          </div>
+          <span id="dim3AlertBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/35">中度防偏 · 指数 62/100</span>
+        </div>
+        <div id="dim3Content" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"></div>
+      </div>
+
+      <!-- DIMENSION 04 & INTERACTIVE BALL PICKER -->
+      <div class="panel-box p-4">
+        <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <div class="flex items-center gap-2">
+            <span class="dim-tag bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">维度 04</span>
+            <h3 class="text-sm font-bold text-slate-100">【最终研判】多维概率推演、全玩法点选与加入推盘单</h3>
+          </div>
+          <button id="btnCopyReport" type="button" class="text-[11px] px-2.5 py-1 rounded bg-[#162235] hover:bg-[#1f304a] text-slate-200 border border-[#283d5c] transition">
+            📋 复制完整分析报告
+          </button>
+        </div>
+
+        <!-- Probability / Confidence Bars -->
+        <div id="dim4ConfidenceBars" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4"></div>
+
+        <!-- Daily 3 Predicted Number Groups per Lottery -->
+        <div id="dim4Daily3Groups" class="bg-[#0b121e] border border-[#1d2e47] rounded-xl p-3.5 mb-4"></div>
+
+        <!-- Play Mode Tabs & Ball Picker -->
+        <div class="bg-[#0b121e] border border-[#1d2e47] rounded-xl p-3.5">
+          <div class="flex items-center justify-between gap-2 flex-wrap mb-3 pb-2.5 border-b border-[#18263b]">
+            <div class="flex items-center gap-1.5 flex-wrap" id="playModeTabs"></div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <button id="btnFillAI" type="button" class="px-2.5 py-1 rounded text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 hover:bg-emerald-500/25 transition">✨ 填入四维推演号</button>
+              <button id="btnRandomPick" type="button" class="px-2.5 py-1 rounded text-[11px] font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/35 hover:bg-sky-500/25 transition">🎲 机选一注</button>
+              <button id="btnClearPick" type="button" class="px-2.5 py-1 rounded text-[11px] font-semibold bg-[#162235] text-slate-400 border border-[#243652] hover:text-slate-200 transition">清空</button>
+            </div>
+          </div>
+
+          <div id="ballPickerArea" class="flex flex-col gap-3"></div>
+
+          <!-- Picker Footer -->
+          <div class="mt-4 pt-3 border-t border-[#18263b] flex flex-wrap items-center justify-between gap-3">
+            <div class="text-xs text-slate-300">
+              已选 <span id="pickerBetCount" class="font-bold text-emerald-400 font-mono">0</span> 注 · 模拟投入
+              <span id="pickerCost" class="font-bold text-amber-400 font-mono">0</span> 元
+              <span id="pickerHint" class="text-[11px] text-slate-500 ml-1"></span>
+            </div>
+            <button id="btnAddToSlip" type="button" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-md shadow-emerald-900/30">
+              + 加入右侧模拟推盘单
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: BET SLIP + COMBO PLANS + REVIEW -->
+    <aside class="flex flex-col gap-4 min-w-0">
+
+      <!-- Card 1: Simulated Bet Slip -->
+      <div class="panel-box p-4">
+        <div class="flex items-center justify-between mb-1">
+          <h3 class="text-sm font-bold text-slate-100">模拟全彩种推盘单</h3>
+          <button id="btnClearSlip" type="button" class="text-[11px] text-slate-400 hover:text-rose-400 transition">清空</button>
+        </div>
+        <div class="text-[11px] text-slate-500 mb-3">已选 <span id="slipCount" class="text-emerald-400 font-bold">0</span> 组方案 · 支持跨彩种混存</div>
+
+        <div id="slipList" class="flex flex-col gap-2 max-h-56 overflow-y-auto mb-3"></div>
+
+        <!-- Multiplier & DLT Append -->
+        <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg p-2.5 flex flex-col gap-2 mb-3 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400">模拟倍数</span>
+            <div class="flex items-center gap-1.5">
+              <button id="btnMultMinus" type="button" class="w-6 h-6 rounded bg-[#162235] border border-[#243652] text-slate-200 hover:border-emerald-500 font-bold">-</button>
+              <input id="inputMultiplier" type="number" min="1" max="99" value="1" class="w-12 text-center bg-[#090e17] border border-[#243652] rounded py-0.5 text-slate-100 font-mono text-xs" />
+              <button id="btnMultPlus" type="button" class="w-6 h-6 rounded bg-[#162235] border border-[#243652] text-slate-200 hover:border-emerald-500 font-bold">+</button>
+            </div>
+          </div>
+          <label id="dltAppendRow" class="hidden items-center justify-between cursor-pointer">
+            <span class="text-slate-400">大乐透追加投注 (+1元/注)</span>
+            <input id="chkDltAppend" type="checkbox" class="accent-emerald-500 w-4 h-4" />
+          </label>
+          <div class="flex items-center justify-between pt-1 border-t border-[#172438]">
+            <span class="text-slate-400">合计模拟投入</span>
+            <span id="slipTotalCost" class="text-sm font-bold text-amber-400 font-mono">0 元</span>
+          </div>
+        </div>
+
+        <button id="btnSaveSlipToReview" type="button" class="w-full py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center justify-center gap-1.5">
+          <span>📌</span>
+          <span>保存当前推盘单至每日复盘区</span>
+        </button>
+      </div>
+
+      <!-- Card 2: Recommended Combo Plans -->
+      <div class="panel-box p-4">
+        <div class="flex items-center justify-between mb-1">
+          <h3 class="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+            <span>🎯</span>
+            <span>当期推荐组合方案</span>
+          </h3>
+          <button id="btnRefreshPlans" type="button" class="text-[11px] px-2 py-0.5 rounded bg-[#162235] text-slate-300 border border-[#243652] hover:border-emerald-500/50 transition">刷新</button>
+        </div>
+        <div class="text-[11px] text-slate-500 mb-3">基于四维研判自动构建稳健复式与精选矩阵</div>
+        <div id="comboPlansContainer" class="flex flex-col gap-2.5"></div>
+      </div>
+
+      <!-- Card 3: All-Lottery Review & One-Click Hit/Miss Verification -->
+      <div class="panel-box p-4">
+        <div class="flex items-center justify-between gap-2 mb-1">
+          <h3 class="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+            <span>📊</span>
+            <span>当期全彩种推演与红黑复盘</span>
+          </h3>
+        </div>
+        <div class="text-[11px] text-slate-500 mb-2.5">一键同步开奖结果 · 自动核对奖级与模拟盈亏</div>
+
+        <button id="btnOneClickCheckAll" type="button" class="w-full mb-3 py-2 rounded-lg text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-950/50 transition">
+          ⚡ 一键核对全部开奖与命中状态
+        </button>
+
+        <div class="mb-2.5">
+          <select id="reviewFilterSelect" class="w-full bg-[#0a101b] border border-[#22344f] rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="all">全部彩种复盘</option>
+            <option value="fc">仅看福利彩票 (双色球/3D/七乐彩)</option>
+            <option value="tc">仅看体育彩票 (大乐透/七星彩/排三/排五)</option>
+          </select>
+        </div>
+
+        <!-- KPI Summary -->
+        <div class="grid grid-cols-3 gap-2 mb-3 text-center">
+          <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg py-2 px-1">
+            <div class="text-[10px] text-slate-400">复盘方案数</div>
+            <div id="kpiTotalReviews" class="text-sm font-bold text-slate-100 font-mono mt-0.5">0</div>
+          </div>
+          <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg py-2 px-1">
+            <div class="text-[10px] text-slate-400">命中方案数</div>
+            <div id="kpiHitReviews" class="text-sm font-bold text-emerald-400 font-mono mt-0.5">0</div>
+          </div>
+          <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg py-2 px-1">
+            <div class="text-[10px] text-slate-400">累计模拟奖金</div>
+            <div id="kpiTotalPrize" class="text-sm font-bold text-amber-400 font-mono mt-0.5">¥0</div>
+          </div>
+        </div>
+
+        <div id="reviewListContainer" class="flex flex-col gap-2 max-h-[340px] overflow-y-auto pr-0.5"></div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- MODAL 1: IMPORT / TENCENT CLOUD SCF & LOCAL REPO CONFIG -->
+  <div id="importModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="panel-box w-full max-w-2xl p-5 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-[#1e2d44] mb-4">
+        <h3 class="text-base font-bold text-white">📥 实时数据接入配置（腾讯云 SCF + 本地仓库 + 网页文本解析）</h3>
+        <button id="btnCloseImportModal" type="button" class="text-slate-400 hover:text-white text-lg leading-none">✕</button>
+      </div>
+
+      <!-- Cloud SCF & Local JSON Settings -->
+      <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-3.5 mb-4">
+        <div class="text-xs font-bold text-emerald-400 mb-2">通道一：腾讯云云函数 (SCF) 实时同步地址（推荐）</div>
+        <input id="inputScfUrl" type="url" placeholder="https://你的云函数域名.scf.tencentcs.com/release/lottery-sync" class="w-full bg-[#090e17] border border-[#263a57] rounded-lg px-3 py-2 text-xs text-slate-100 font-mono mb-2 focus:outline-none focus:border-emerald-500" />
+        <div class="text-xs font-bold text-sky-400 mb-1.5 mt-2">通道二：本地/GitHub 仓库静态 JSON 路径（GitHub Actions 定时更新）</div>
+        <input id="inputLocalJsonUrl" type="text" value="./data/lottery_data.json" class="w-full bg-[#090e17] border border-[#263a57] rounded-lg px-3 py-2 text-xs text-slate-100 font-mono mb-2 focus:outline-none focus:border-sky-500" />
+        <div class="flex items-center justify-between gap-2 flex-wrap mt-2">
+          <span class="text-[11px] text-slate-500">点击顶部“同步实时开奖”时优先请求腾讯云 SCF，失败自动回退本地仓库 JSON。</span>
+          <button id="btnSaveSyncConfig" type="button" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white">保存配置并立即同步</button>
+        </div>
+      </div>
+
+      <!-- Paste Web Text Parser -->
+      <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-3.5">
+        <div class="text-xs font-bold text-amber-300 mb-1.5">通道三：一键粘贴网页开奖文本（支持网易彩票 / 足彩网 / 中彩网复制粘贴）</div>
+        <p class="text-[11px] text-slate-400 mb-2">支持格式示例：<code class="text-slate-300">双色球 2026135 2026-11-24 02 08 14 19 25 31 + 06</code> 或 <code class="text-slate-300">大乐透 26135 2026-11-25 03 11 19 26 34 + 04 11</code> 或 <code class="text-slate-300">福彩3D 2026314 2026-11-24 5 2 8</code>（可多行批量导入）</p>
+        <textarea id="pasteImportArea" rows="4" placeholder="在此粘贴一行或多行开奖文本，解析后自动更新对应彩种历史、核对复盘单命中状态并推进下一期..." class="w-full bg-[#090e17] border border-[#263a57] rounded-lg p-2.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-amber-500"></textarea>
+        <div class="flex justify-end gap-2 mt-2.5">
+          <button id="btnParsePaste" type="button" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white">立即解析并更新数据</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: FULL REVIEW ARCHIVE & SCHEDULE CALENDAR -->
+  <div id="reviewModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="panel-box w-full max-w-3xl p-5 max-h-[88vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-[#1e2d44] mb-3">
+        <div>
+          <h3 class="text-base font-bold text-white">📋 每日全彩种复盘中心（红黑记录与奖金明细）</h3>
+          <p class="text-[11px] text-slate-400 mt-0.5">支持按彩种查看历史推盘单、一键核对最新开奖结果、导出复盘记录</p>
+        </div>
+        <button id="btnCloseReviewModal" type="button" class="text-slate-400 hover:text-white text-lg leading-none">✕</button>
+      </div>
+      <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+        <div class="flex items-center gap-2">
+          <button id="btnModalCheckAll" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white">⚡ 一键核对全部待开奖方案</button>
+          <button id="btnExportReviews" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#162235] text-sky-300 border border-[#263a57] hover:border-sky-400">复制复盘汇总</button>
+        </div>
+        <button id="btnClearAllReviews" type="button" class="text-xs text-slate-400 hover:text-rose-400">清空所有复盘记录</button>
+      </div>
+      <div id="modalReviewBody" class="flex-1 overflow-y-auto flex flex-col gap-2.5 pr-1"></div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: DRAW SCHEDULE CALENDAR -->
+  <div id="calendarModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="panel-box w-full max-w-xl p-5">
+      <div class="flex items-center justify-between pb-3 border-b border-[#1e2d44] mb-3">
+        <h3 class="text-base font-bold text-white">📅 体彩·福彩每周开奖日历（北京时间）</h3>
+        <button id="btnCloseCalendarModal" type="button" class="text-slate-400 hover:text-white text-lg leading-none">✕</button>
+      </div>
+      <div class="grid grid-cols-1 gap-2 text-xs">
+        <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">星期一</span><span class="text-emerald-300">大乐透(21:25) · 七乐彩(21:15) · 3D · 排列三/五</span></div>
+        <div class="bg-emerald-500/10 border border-emerald-500/40 rounded-lg p-2.5 flex justify-between"><span class="font-bold text-emerald-300">星期二（今日 11-24）</span><span class="text-white font-semibold">双色球(21:15) · 七星彩(21:25) · 3D · 排列三/五</span></div>
+        <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">星期三</span><span class="text-emerald-300">大乐透(21:25) · 七乐彩(21:15) · 3D · 排列三/五</span></div>
+        <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">星期四</span><span class="text-sky-300">双色球(21:15) · 3D · 排列三/五</span></div>
+        <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">星期五</span><span class="text-amber-300">七星彩(21:25) · 七乐彩(21:15) · 3D · 排列三/五</span></div>
+        <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">星期六</span><span class="text-emerald-300">大乐透(21:25) · 3D · 排列三/五</span></div>
+        <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">星期日</span><span class="text-rose-300">双色球(21:15) · 七星彩(21:25) · 3D · 排列三/五</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER (Bottom Right like Reference Screenshot) -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <script>
+    // =========================================================================
+    // 1. REAL VERIFIED INITIAL DATASET (AS OF 2026-11-24 FROM OFFICIAL SOURCES)
+    // =========================================================================
+    const INITIAL_LOTTERIES = {
+      ssq: {
+        id: 'ssq',
+        name: '双色球',
+        org: 'fc',
+        orgLabel: '福彩 · 官方开奖',
+        type: 'lotto',
+        drawsToday: true,
+        schedule: '每周二、四、日 21:15 开奖',
+        cutoff: '停售 20:00 · 开奖 21:15',
+        ruleDesc: '红球 01-33 选 6 + 蓝球 01-16 选 1 · 单注 2 元 · 奖池 11.54 亿',
+        nextIssue: '2026135',
+        nextDate: '2026-11-24',
+        jackpot: '1,154,982,023 元',
+        placeholder: '格式：04 05 10 17 21 32 + 08',
+        mainRange: [1, 33], mainPick: 6,
+        subRange: [1, 16], subPick: 1,
+        modes: [
+          { id: 'standard', label: '标准/复式' },
+          { id: 'dantuo', label: '胆拖投注' }
+        ],
+        history: [
+          { issue: '2026134', date: '2026-11-22', main: [4,5,10,17,21,32], sub: [8] },
+          { issue: '2026133', date: '2026-11-19', main: [7,10,11,14,21,26], sub: [13] },
+          { issue: '2026132', date: '2026-11-17', main: [5,9,13,17,18,21], sub: [11] },
+          { issue: '2026131', date: '2026-11-15', main: [1,10,19,26,31,33], sub: [15] },
+          { issue: '2026130', date: '2026-11-12', main: [1,2,6,16,20,28], sub: [2] },
+          { issue: '2026129', date: '2026-11-10', main: [3,9,16,20,25,30], sub: [5] },
+          { issue: '2026128', date: '2026-11-08', main: [5,6,10,25,27,30], sub: [11] },
+          { issue: '2026127', date: '2026-11-05', main: [13,14,19,25,29,32], sub: [12] },
+          { issue: '2026126', date: '2026-11-03', main: [9,10,13,22,29,32], sub: [12] },
+          { issue: '2026125', date: '2026-11-01', main: [4,6,10,15,26,27], sub: [11] }
+        ]
+      },
+      fc3d: {
+        id: 'fc3d',
+        name: '福彩3D',
+        org: 'fc',
+        orgLabel: '福彩 · 官方开奖',
+        type: 'digit',
+        drawsToday: true,
+        schedule: '每日 21:15 开奖',
+        cutoff: '停售 20:00 · 开奖 21:15',
+        ruleDesc: '百/十/个位各选 0-9 · 直选 1040 元 · 组三 346 元 · 组六 173 元',
+        nextIssue: '2026314',
+        nextDate: '2026-11-24',
+        jackpot: '固定设奖（直选1040元）',
+        placeholder: '格式：3 4 6',
+        positions: 3, digitMax: 9,
+        modes: [
+          { id: 'direct', label: '直选定位' },
+          { id: 'group3', label: '组选三' },
+          { id: 'group6', label: '组选六' }
+        ],
+        history: [
+          { issue: '2026313', date: '2026-11-23', main: [3,4,6], sub: [], trial: [5,3,1] },
+          { issue: '2026312', date: '2026-11-22', main: [4,0,8], sub: [] },
+          { issue: '2026311', date: '2026-11-21', main: [8,1,5], sub: [] },
+          { issue: '2026310', date: '2026-11-20', main: [3,1,8], sub: [] },
+          { issue: '2026309', date: '2026-11-19', main: [1,5,6], sub: [] },
+          { issue: '2026308', date: '2026-11-18', main: [0,4,1], sub: [] },
+          { issue: '2026307', date: '2026-11-17', main: [6,0,1], sub: [] },
+          { issue: '2026306', date: '2026-11-16', main: [4,3,2], sub: [] },
+          { issue: '2026305', date: '2026-11-15', main: [2,0,0], sub: [] },
+          { issue: '2026304', date: '2026-11-14', main: [8,2,3], sub: [] }
+        ]
+      },
+      qlc: {
+        id: 'qlc',
+        name: '七乐彩',
+        org: 'fc',
+        orgLabel: '福彩 · 官方开奖',
+        type: 'lotto',
+        drawsToday: false,
+        schedule: '每周一、三、五 21:15 开奖',
+        cutoff: '停售 20:00 · 开奖 21:15',
+        ruleDesc: '01-30 选 7 个基本号（开奖含 1 个特别号）· 单注 2 元 · 七个奖级',
+        nextIssue: '2026136',
+        nextDate: '2026-11-25',
+        jackpot: '2,836,950 元',
+        placeholder: '格式：01 02 07 10 12 21 26 + 03',
+        mainRange: [1, 30], mainPick: 7,
+        subRange: null, subPick: 0,
+        modes: [
+          { id: 'standard', label: '标准/复式' },
+          { id: 'dantuo', label: '胆拖投注' }
+        ],
+        history: [
+          { issue: '2026135', date: '2026-11-23', main: [1,2,7,10,12,21,26], sub: [3] },
+          { issue: '2026134', date: '2026-11-20', main: [2,5,12,16,24,26,30], sub: [8] },
+          { issue: '2026133', date: '2026-11-18', main: [1,4,7,8,11,13,22], sub: [5] },
+          { issue: '2026132', date: '2026-11-16', main: [4,6,7,13,17,21,29], sub: [14] },
+          { issue: '2026131', date: '2026-11-13', main: [4,8,10,14,17,24,27], sub: [30] }
+        ]
+      },
+      dlt: {
+        id: 'dlt',
+        name: '超级大乐透',
+        org: 'tc',
+        orgLabel: '体彩 · 官方开奖',
+        type: 'lotto',
+        drawsToday: false,
+        schedule: '每周一、三、六 21:25 开奖',
+        cutoff: '停售 21:00 · 开奖 21:25',
+        ruleDesc: '前区 01-35 选 5 + 后区 01-12 选 2 · 基本 2 元 / 追加 3 元 · 九个奖级',
+        nextIssue: '26135',
+        nextDate: '2026-11-25',
+        jackpot: '758,257,386.32 元',
+        placeholder: '格式：04 15 17 24 31 + 06 09',
+        mainRange: [1, 35], mainPick: 5,
+        subRange: [1, 12], subPick: 2,
+        modes: [
+          { id: 'standard', label: '标准/复式' },
+          { id: 'dantuo', label: '胆拖投注' }
+        ],
+        history: [
+          { issue: '26134', date: '2026-11-23', main: [4,15,17,24,31], sub: [6,9] },
+          { issue: '26133', date: '2026-11-21', main: [10,11,25,30,32], sub: [9,10] },
+          { issue: '26132', date: '2026-11-18', main: [2,9,16,26,35], sub: [6,11] },
+          { issue: '26131', date: '2026-11-16', main: [2,11,18,19,29], sub: [4,7] },
+          { issue: '26130', date: '2026-11-14', main: [1,7,11,27,29], sub: [2,6] },
+          { issue: '26129', date: '2026-11-11', main: [2,12,14,17,33], sub: [7,8] },
+          { issue: '26128', date: '2026-11-09', main: [3,13,20,25,34], sub: [9,12] },
+          { issue: '26127', date: '2026-11-07', main: [5,6,17,18,27], sub: [3,12] },
+          { issue: '26126', date: '2026-11-04', main: [5,11,17,25,34], sub: [4,6] },
+          { issue: '26125', date: '2026-11-02', main: [12,13,23,25,29], sub: [7,10] }
+        ]
+      },
+      qxc: {
+        id: 'qxc',
+        name: '七星彩',
+        org: 'tc',
+        orgLabel: '体彩 · 官方开奖',
+        type: 'digit',
+        drawsToday: true,
+        schedule: '每周二、五、日 21:25 开奖',
+        cutoff: '停售 21:00 · 开奖 21:25',
+        ruleDesc: '前6位各选 0-9 + 第7位(末位)选 0-14 · 单注 2 元 · 最高 500 万',
+        nextIssue: '26135',
+        nextDate: '2026-11-24',
+        jackpot: '3,960,337.46 元',
+        placeholder: '格式：7 2 4 7 6 3 + 14',
+        positions: 7, digitMax: 9, lastDigitMax: 14,
+        modes: [
+          { id: 'direct', label: '定位复式' }
+        ],
+        history: [
+          { issue: '26134', date: '2026-11-22', main: [7,2,4,7,6,3], sub: [14] },
+          { issue: '26133', date: '2026-11-20', main: [6,2,1,8,9,2], sub: [5] },
+          { issue: '26132', date: '2026-11-17', main: [0,0,7,0,4,2], sub: [7] },
+          { issue: '26131', date: '2026-11-15', main: [4,5,6,1,9,7], sub: [3] },
+          { issue: '26130', date: '2026-11-13', main: [6,7,4,8,0,4], sub: [5] },
+          { issue: '26129', date: '2026-11-10', main: [4,0,6,5,2,9], sub: [14] },
+          { issue: '26128', date: '2026-11-08', main: [9,3,8,6,2,5], sub: [8] },
+          { issue: '26127', date: '2026-11-06', main: [5,1,3,7,4,8], sub: [8] },
+          { issue: '26126', date: '2026-11-03', main: [3,3,3,4,1,7], sub: [8] },
+          { issue: '26125', date: '2026-11-01', main: [2,9,4,5,6,3], sub: [2] }
+        ]
+      },
+      pl3: {
+        id: 'pl3',
+        name: '排列三',
+        org: 'tc',
+        orgLabel: '体彩 · 官方开奖',
+        type: 'digit',
+        drawsToday: true,
+        schedule: '每日 21:25 开奖',
+        cutoff: '停售 21:00 · 开奖 21:25',
+        ruleDesc: '百/十/个位各选 0-9 · 直选 1040 元 · 组三 346 元 · 组六 173 元',
+        nextIssue: '26314',
+        nextDate: '2026-11-24',
+        jackpot: '固定设奖（直选1040元）',
+        placeholder: '格式：0 3 6',
+        positions: 3, digitMax: 9,
+        modes: [
+          { id: 'direct', label: '直选定位' },
+          { id: 'group3', label: '组选三' },
+          { id: 'group6', label: '组选六' }
+        ],
+        history: [
+          { issue: '26313', date: '2026-11-23', main: [0,3,6], sub: [] },
+          { issue: '26312', date: '2026-11-22', main: [7,7,1], sub: [] },
+          { issue: '26311', date: '2026-11-21', main: [8,4,0], sub: [] },
+          { issue: '26310', date: '2026-11-20', main: [1,6,2], sub: [] },
+          { issue: '26309', date: '2026-11-19', main: [0,3,3], sub: [] },
+          { issue: '26308', date: '2026-11-18', main: [3,6,2], sub: [] },
+          { issue: '26307', date: '2026-11-17', main: [0,6,7], sub: [] },
+          { issue: '26306', date: '2026-11-16', main: [0,3,2], sub: [] },
+          { issue: '26305', date: '2026-11-15', main: [2,6,0], sub: [] },
+          { issue: '26304', date: '2026-11-14', main: [2,9,0], sub: [] }
+        ]
+      },
+      pl5: {
+        id: 'pl5',
+        name: '排列五',
+        org: 'tc',
+        orgLabel: '体彩 · 官方开奖',
+        type: 'digit',
+        drawsToday: true,
+        schedule: '每日 21:25 开奖',
+        cutoff: '停售 21:00 · 开奖 21:25',
+        ruleDesc: '万/千/百/十/个位各选 0-9 · 直选单注固定奖金 100,000 元',
+        nextIssue: '26314',
+        nextDate: '2026-11-24',
+        jackpot: '38,994,127.36 元',
+        placeholder: '格式：0 3 6 6 7',
+        positions: 5, digitMax: 9,
+        modes: [
+          { id: 'direct', label: '直选定位' }
+        ],
+        history: [
+          { issue: '26313', date: '2026-11-23', main: [0,3,6,6,7], sub: [] },
+          { issue: '26312', date: '2026-11-22', main: [7,7,1,4,4], sub: [] },
+          { issue: '26311', date: '2026-11-21', main: [8,4,0,5,7], sub: [] },
+          { issue: '26310', date: '2026-11-20', main: [1,6,2,6,9], sub: [] },
+          { issue: '26309', date: '2026-11-19', main: [0,3,3,0,9], sub: [] },
+          { issue: '26308', date: '2026-11-18', main: [3,6,2,9,1], sub: [] },
+          { issue: '26307', date: '2026-11-17', main: [0,6,7,4,7], sub: [] },
+          { issue: '26306', date: '2026-11-16', main: [0,3,2,4,3], sub: [] },
+          { issue: '26305', date: '2026-11-15', main: [2,6,0,8,1], sub: [] },
+          { issue: '26304', date: '2026-11-14', main: [2,9,0,1,7], sub: [] }
+        ]
+      }
+    };
+
+    const LOTTERY_ORDER = ['ssq', 'fc3d', 'qlc', 'dlt', 'qxc', 'pl3', 'pl5'];
+    const STORAGE_KEY_STATE = 'lottery_all_sim_v3_data';
+    const STORAGE_KEY_REVIEWS = 'lottery_all_sim_v3_reviews';
+    const STORAGE_KEY_CONFIG = 'lottery_all_sim_v3_config';
+
+    // =========================================================================
+    // 2. APPLICATION STATE
+    // =========================================================================
+    const state = {
+      lotteries: JSON.parse(JSON.stringify(INITIAL_LOTTERIES)),
+      activeId: 'ssq',
+      filterCat: 'all',
+      filterType: 'all',
+      search: '',
+      expandedLeft: {},
+      weights: { hot: 65, cold: 55, balance: 70, repeat: 45 },
+      playMode: 'standard',
+      picker: { main: [], dan: [], sub: [], pos: [] },
+      slip: [],
+      multiplier: 1,
+      dltAppend: false,
+      reviews: [],
+      reviewFilter: 'all',
+      planSeed: 0,
+      syncConfig: {
+        scfUrl: '',
+        localJsonUrl: './data/lottery_data.json'
+      }
+    };
+
+    let trendChartInstance = null;
+
+    // Safe localStorage helpers
+    function loadPersistedState() {
+      try {
+        const savedData = localStorage.getItem(STORAGE_KEY_STATE);
+        if (savedData) {
+          const parsed = JSON.parse(savedData);
+          if (parsed && parsed.ssq && parsed.dlt) state.lotteries = parsed;
+        }
+        const savedReviews = localStorage.getItem(STORAGE_KEY_REVIEWS);
+        if (savedReviews) {
+          const parsedR = JSON.parse(savedReviews);
+          if (Array.isArray(parsedR)) state.reviews = parsedR;
+        }
+        const savedCfg = localStorage.getItem(STORAGE_KEY_CONFIG);
+        if (savedCfg) {
+          const parsedC = JSON.parse(savedCfg);
+          if (parsedC) state.syncConfig = Object.assign(state.syncConfig, parsedC);
+        }
+      } catch (e) { /* ignore storage errors in restricted frames */ }
+    }
+
+    function persistState() {
+      try {
+        localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(state.lotteries));
+        localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify(state.reviews));
+        localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(state.syncConfig));
+      } catch (e) { /* ignore storage errors */ }
+    }
+
+    // =========================================================================
+    // 3. MATH & STATISTICAL 4D ANALYSIS ENGINE
+    // =========================================================================
+    function pad2(n, isLotto) {
+      return isLotto ? String(n).padStart(2, '0') : String(n);
+    }
+
+    function nCr(n, r) {
+      if (r < 0 || r > n) return 0;
+      if (r === 0 || r === n) return 1;
+      let res = 1;
+      for (let i = 1; i <= r; i++) res = res * (n - r + i) / i;
+      return Math.round(res);
+    }
+
+    function getCombinations(arr, k) {
+      const result = [];
+      function helper(start, combo) {
+        if (combo.length === k) { result.push(combo.slice()); return; }
+        for (let i = start; i < arr.length; i++) {
+          combo.push(arr[i]);
+          helper(i + 1, combo);
+          combo.pop();
+        }
+      }
+      helper(0, []);
+      return result;
+    }
+
+    function computeAnalysis(game) {
+      const hist = game.history;
+      const n = hist.length;
+      const latest = hist[0];
+      const w = state.weights;
+
+      // Compute Sum, Span, Odd/Even, Big/Small for each draw
+      const series = hist.slice().reverse().map(d => {
+        const nums = d.main;
+        const sum = nums.reduce((a, b) => a + b, 0);
+        const span = Math.max(...nums) - Math.min(...nums);
+        const odd = nums.filter(x => x % 2 === 1).length;
+        const mid = game.type === 'lotto' ? Math.ceil(game.mainRange[1] / 2) : 5;
+        const big = nums.filter(x => x >= mid).length;
+        return { issue: d.issue, date: d.date, sum, span, odd, even: nums.length - odd, big, small: nums.length - big };
+      });
+
+      const avgSum = (series.reduce((a, b) => a + b.sum, 0) / Math.max(1, n)).toFixed(1);
+      const avgSpan = (series.reduce((a, b) => a + b.span, 0) / Math.max(1, n)).toFixed(1);
+      const latestMetric = series[series.length - 1];
+
+      if (game.type === 'lotto') {
+        const [minN, maxN] = game.mainRange;
+        const freq = {};
+        const miss = {};
+        for (let v = minN; v <= maxN; v++) { freq[v] = 0; miss[v] = n; }
+        hist.forEach((d, idx) => {
+          d.main.forEach(v => {
+            freq[v] = (freq[v] || 0) + 1;
+            if (miss[v] === n) miss[v] = idx;
+          });
+        });
+
+        const lastMainSet = new Set(latest.main);
+        const adjSet = new Set();
+        latest.main.forEach(v => {
+          if (v - 1 >= minN) adjSet.add(v - 1);
+          if (v + 1 <= maxN) adjSet.add(v + 1);
+        });
+
+        // Score each main ball based on interactive sliders
+        const scoredMain = [];
+        for (let v = minN; v <= maxN; v++) {
+          const hotScore = (freq[v] / Math.max(1, n)) * 100 * (w.hot / 50);
+          const coldScore = (miss[v] / Math.max(1, n)) * 100 * (w.cold / 50);
+          const midDist = 1 - Math.abs(v - (maxN + 1) / 2) / ((maxN + 1) / 2);
+          const balScore = midDist * 40 * (w.balance / 50);
+          const repBonus = (lastMainSet.has(v) ? 28 : adjSet.has(v) ? 18 : 0) * (w.repeat / 50);
+          const seedJitter = ((v * 17 + state.planSeed * 13) % 7) * 0.8;
+          scoredMain.push({
+            num: v,
+            freq: freq[v],
+            miss: miss[v],
+            score: hotScore + coldScore + balScore + repBonus + seedJitter
+          });
+        }
+        scoredMain.sort((a, b) => b.score - a.score);
+
+        const hotBalls = scoredMain.slice().sort((a, b) => b.freq - a.freq || a.miss - b.miss).slice(0, 6);
+        const coldBalls = scoredMain.slice().sort((a, b) => b.miss - a.miss || a.freq - b.freq).slice(0, 6);
+        const killBalls = scoredMain.slice(-5).map(x => x.num).sort((a, b) => a - b);
+        const danBalls = scoredMain.slice(0, 2).map(x => x.num).sort((a, b) => a - b);
+        const recMainFull = scoredMain.slice(0, game.mainPick + 3).map(x => x.num).sort((a, b) => a - b);
+        const recMainSingle = scoredMain.slice(0, game.mainPick).map(x => x.num).sort((a, b) => a - b);
+
+        // Sub balls (Blue / Back zone)
+        let scoredSub = [];
+        let recSub = [];
+        let hotSub = [];
+        let coldSub = [];
+        if (game.subRange) {
+          const [sMin, sMax] = game.subRange;
+          const sFreq = {}, sMiss = {};
+          for (let v = sMin; v <= sMax; v++) { sFreq[v] = 0; sMiss[v] = n; }
+          hist.forEach((d, idx) => {
+            (d.sub || []).forEach(v => {
+              sFreq[v] = (sFreq[v] || 0) + 1;
+              if (sMiss[v] === n) sMiss[v] = idx;
+            });
+          });
+          for (let v = sMin; v <= sMax; v++) {
+            const sc = (sFreq[v] / n) * 90 * (w.hot / 50) + (sMiss[v] / n) * 95 * (w.cold / 50) + (((v * 11 + state.planSeed * 7) % 5) * 1.2);
+            scoredSub.push({ num: v, freq: sFreq[v], miss: sMiss[v], score: sc });
+          }
+          scoredSub.sort((a, b) => b.score - a.score);
+          recSub = scoredSub.slice(0, game.subPick + 2).map(x => x.num).sort((a, b) => a - b);
+          hotSub = scoredSub.slice().sort((a, b) => b.freq - a.freq).slice(0, 3);
+          coldSub = scoredSub.slice().sort((a, b) => b.miss - a.miss).slice(0, 3);
+        }
+
+        // Zone ratio (3 zones)
+        const z1End = Math.floor(maxN / 3);
+        const z2End = Math.floor((maxN * 2) / 3);
+        const lastZones = [
+          latest.main.filter(x => x <= z1End).length,
+          latest.main.filter(x => x > z1End && x <= z2End).length,
+          latest.main.filter(x => x > z2End).length
+        ];
+
+        const maxMissVal = Math.max(...scoredMain.map(x => x.miss));
+        const alertIndex = Math.min(96, Math.round(38 + maxMissVal * 4.5 + (w.cold - 50) * 0.25));
+
+        // Build 3 distinct daily predicted groups (Hot / Balanced / Cold-Rebound)
+        const z1 = Math.floor(maxN / 3), z2 = Math.floor((maxN * 2) / 3);
+        const zoneRanges = [
+          [minN, z1],
+          [z1 + 1, z2],
+          [z2 + 1, maxN]
+        ];
+        const quotas = game.mainPick === 6 ? [[2,2,2],[2,3,1],[1,2,3]]
+          : game.mainPick === 5 ? [[2,2,1],[1,2,2],[2,1,2]]
+          : [[2,3,2],[3,2,2],[2,2,3]];
+
+        const pickLottoGroup = (wh, wc, wr, quota, prevMains) => {
+          const used = {};
+          prevMains.forEach(pm => pm.forEach(x => { used[x] = (used[x] || 0) + 1; }));
+          const chosen = [];
+          zoneRanges.forEach(([lo, hi], zi) => {
+            const cand = [];
+            for (let v = lo; v <= hi; v++) {
+              let sc = (freq[v] / Math.max(1, n)) * 100 * wh + (miss[v] / Math.max(1, n)) * 100 * wc;
+              if (lastMainSet.has(v)) sc += 24 * wr;
+              else if (adjSet.has(v)) sc += 15 * wr;
+              sc += ((v * 17 + state.planSeed * 13) % 7) * 0.8;
+              sc -= (used[v] || 0) * 55;
+              cand.push({ num: v, sc });
+            }
+            cand.sort((a, b) => b.sc - a.sc || a.num - b.num);
+            cand.slice(0, quota[zi]).forEach(c => chosen.push(c.num));
+          });
+          return chosen.sort((a, b) => a - b);
+        };
+
+        const g1Main = pickLottoGroup(1.6 * (w.hot / 65), 0.3 * (w.cold / 55), 1.0 * (w.repeat / 45), quotas[0], []);
+        const g2Main = pickLottoGroup(1.0 * (w.hot / 65), 1.0 * (w.cold / 55), 0.7 * (w.repeat / 45), quotas[1], [g1Main]);
+        const g3Main = pickLottoGroup(0.3 * (w.hot / 65), 1.8 * (w.cold / 55), 0.4 * (w.repeat / 45), quotas[2], [g1Main, g2Main]);
+
+        let gSubs = [[], [], []];
+        if (game.subRange) {
+          const [sMin, sMax] = game.subRange;
+          const sFreq = {}, sMiss = {};
+          for (let v = sMin; v <= sMax; v++) { sFreq[v] = 0; sMiss[v] = n; }
+          hist.forEach((d, idx) => {
+            (d.sub || []).forEach(v => { sFreq[v] = (sFreq[v] || 0) + 1; if (sMiss[v] === n) sMiss[v] = idx; });
+          });
+          const pickSubGroup = (wh, wc, prevSubs) => {
+            const usedS = new Set(prevSubs.flat());
+            const cand = [];
+            for (let v = sMin; v <= sMax; v++) {
+              let sc = (sFreq[v] / Math.max(1, n)) * 100 * wh + (sMiss[v] / Math.max(1, n)) * 100 * wc;
+              sc += ((v * 11 + state.planSeed * 7) % 5) * 1.1;
+              if (usedS.has(v)) sc -= 120;
+              cand.push({ num: v, sc });
+            }
+            cand.sort((a, b) => b.sc - a.sc || a.num - b.num);
+            return cand.slice(0, game.subPick).map(c => c.num).sort((a, b) => a - b);
+          };
+          const sb1 = pickSubGroup(1.6, 0.4, []);
+          const sb2 = pickSubGroup(1.0, 1.1, [sb1]);
+          const sb3 = pickSubGroup(0.3, 1.8, [sb1, sb2]);
+          gSubs = [sb1, sb2, sb3];
+        }
+
+        const daily3Groups = [
+          { idx: 1, tag: '热温追击', tagCls: 'bg-rose-500/15 text-rose-300 border-rose-500/30', main: g1Main, sub: gSubs[0] },
+          { idx: 2, tag: '冷热均衡', tagCls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', main: g2Main, sub: gSubs[1] },
+          { idx: 3, tag: '遗漏回补', tagCls: 'bg-sky-500/15 text-sky-300 border-sky-500/30', main: g3Main, sub: gSubs[2] }
+        ];
+
+        return {
+          type: 'lotto',
+          series, avgSum, avgSpan, latestMetric, lastZones,
+          hotBalls, coldBalls, killBalls, danBalls,
+          recMainFull, recMainSingle,
+          recSub, recSubSingle: recSub.slice(0, game.subPick),
+          hotSub, coldSub,
+          daily3Groups,
+          alertIndex,
+          scoredMain
+        };
+      } else {
+        // Digit lottery (3D, PL3, PL5, QXC)
+        const posCount = game.positions;
+        const posStats = [];
+        const recPosFull = [];
+        const recPosSingle = [];
+        const hotDigitsAll = {};
+        for (let d = 0; d <= 9; d++) hotDigitsAll[d] = 0;
+
+        for (let p = 0; p < posCount; p++) {
+          const isQxcLast = (game.id === 'qxc' && p === 6);
+          const maxD = isQxcLast ? 14 : 9;
+          const freq = {}, miss = {};
+          for (let d = 0; d <= maxD; d++) { freq[d] = 0; miss[d] = n; }
+
+          hist.forEach((row, idx) => {
+            const val = isQxcLast ? row.sub[0] : row.main[p];
+            if (val !== undefined) {
+              freq[val] = (freq[val] || 0) + 1;
+              if (!isQxcLast) hotDigitsAll[val] = (hotDigitsAll[val] || 0) + 1;
+              if (miss[val] === n) miss[val] = idx;
+            }
+          });
+
+          const lastVal = isQxcLast ? latest.sub[0] : latest.main[p];
+          const scored = [];
+          for (let d = 0; d <= maxD; d++) {
+            const hotSc = (freq[d] / n) * 100 * (w.hot / 50);
+            const coldSc = (miss[d] / n) * 100 * (w.cold / 50);
+            const repSc = (d === lastVal ? 26 : Math.abs(d - lastVal) === 1 ? 15 : 0) * (w.repeat / 50);
+            const balSc = (1 - Math.abs(d - maxD / 2) / (maxD / 2 + 1)) * 25 * (w.balance / 50);
+            const jitter = ((d * 13 + p * 7 + state.planSeed * 11) % 6) * 1.1;
+            scored.push({ num: d, freq: freq[d], miss: miss[d], score: hotSc + coldSc + repSc + balSc + jitter });
+          }
+          scored.sort((a, b) => b.score - a.score);
+          posStats.push({ pos: p, isQxcLast, maxD, scored });
+          recPosFull.push(scored.slice(0, isQxcLast ? 3 : 3).map(x => x.num).sort((a, b) => a - b));
+          recPosSingle.push(scored[0].num);
+        }
+
+        const hotBalls = Object.entries(hotDigitsAll).map(([num, f]) => ({ num: Number(num), freq: f }))
+          .sort((a, b) => b.freq - a.freq).slice(0, 4);
+        const coldBalls = Object.entries(hotDigitsAll).map(([num, f]) => ({ num: Number(num), freq: f }))
+          .sort((a, b) => a.freq - b.freq).slice(0, 4);
+        const killBalls = coldBalls.slice(0, 2).map(x => x.num);
+        const danBalls = hotBalls.slice(0, 2).map(x => x.num);
+
+        // 012 road for latest main
+        const road012 = [
+          latest.main.filter(x => x % 3 === 0).length,
+          latest.main.filter(x => x % 3 === 1).length,
+          latest.main.filter(x => x % 3 === 2).length
+        ];
+
+        const maxMissVal = Math.max(...posStats.map(ps => Math.max(...ps.scored.map(s => s.miss))));
+        const alertIndex = Math.min(95, Math.round(40 + maxMissVal * 4.2 + (w.cold - 50) * 0.25));
+
+        const dGroupArrs = [[], [], []];
+        posStats.forEach((ps, pIdx) => {
+          const lastVal = ps.isQxcLast ? latest.sub[0] : latest.main[pIdx];
+          const pickDigit = (wh, wc, wr, usedArr, preferOdd) => {
+            const cand = ps.scored.map(s => {
+              let sc = (s.freq / Math.max(1, n)) * 100 * wh + (s.miss / Math.max(1, n)) * 100 * wc;
+              if (s.num === lastVal) sc += 20 * wr;
+              else if (Math.abs(s.num - lastVal) === 1) sc += 12 * wr;
+              if (usedArr.includes(s.num)) sc -= 90;
+              if ((s.num % 2 === 1) === preferOdd) sc += 18;
+              sc += ((s.num * 13 + pIdx * 7 + state.planSeed * 11) % 6) * 0.9;
+              return { num: s.num, sc };
+            });
+            cand.sort((a, b) => b.sc - a.sc || a.num - b.num);
+            return cand[0].num;
+          };
+          const v1 = pickDigit(1.6 * (w.hot / 65), 0.4 * (w.cold / 55), 0.9 * (w.repeat / 45), [], pIdx % 2 === 1);
+          const v2 = pickDigit(1.0 * (w.hot / 65), 1.0 * (w.cold / 55), 0.7 * (w.repeat / 45), [v1], pIdx % 2 === 0);
+          const v3 = pickDigit(0.3 * (w.hot / 65), 1.8 * (w.cold / 55), 0.4 * (w.repeat / 45), [v1, v2], pIdx % 2 === 1);
+          dGroupArrs[0].push(v1);
+          dGroupArrs[1].push(v2);
+          dGroupArrs[2].push(v3);
+        });
+
+        const daily3Groups = [
+          { idx: 1, tag: '热温追击', tagCls: 'bg-rose-500/15 text-rose-300 border-rose-500/30', main: game.id === 'qxc' ? dGroupArrs[0].slice(0, 6) : dGroupArrs[0], sub: game.id === 'qxc' ? [dGroupArrs[0][6]] : [] },
+          { idx: 2, tag: '冷热均衡', tagCls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', main: game.id === 'qxc' ? dGroupArrs[1].slice(0, 6) : dGroupArrs[1], sub: game.id === 'qxc' ? [dGroupArrs[1][6]] : [] },
+          { idx: 3, tag: '遗漏回补', tagCls: 'bg-sky-500/15 text-sky-300 border-sky-500/30', main: game.id === 'qxc' ? dGroupArrs[2].slice(0, 6) : dGroupArrs[2], sub: game.id === 'qxc' ? [dGroupArrs[2][6]] : [] }
+        ];
+
+        return {
+          type: 'digit',
+          series, avgSum, avgSpan, latestMetric, road012,
+          posStats, recPosFull, recPosSingle,
+          hotBalls, coldBalls, killBalls, danBalls,
+          daily3Groups,
+          alertIndex
+        };
+      }
+    }
+
+    // =========================================================================
+    // 4. EXACT PRIZE TIER VERIFICATION ENGINE (ALL 7 LOTTERIES)
+    // =========================================================================
+    function evaluateTicketAgainstDraw(ticket, draw) {
+      const g = state.lotteries[ticket.gameId];
+      const mult = ticket.multiplier || 1;
+      let totalPrize = 0;
+      const tierHits = {};
+
+      function addHit(tierName, prizePerBet) {
+        tierHits[tierName] = (tierHits[tierName] || 0) + 1;
+        totalPrize += prizePerBet * mult;
+      }
+
+      if (ticket.gameId === 'ssq') {
+        const winR = new Set(draw.main);
+        const winB = draw.sub[0];
+        let redCombos = [];
+        if (ticket.playMode === 'dantuo') {
+          const need = 6 - ticket.dan.length;
+          redCombos = getCombinations(ticket.main, need).map(c => ticket.dan.concat(c));
+        } else {
+          redCombos = getCombinations(ticket.main, 6);
+        }
+        redCombos.forEach(rc => {
+          const rHit = rc.filter(x => winR.has(x)).length;
+          ticket.sub.forEach(b => {
+            const bHit = (b === winB) ? 1 : 0;
+            if (rHit === 6 && bHit === 1) addHit('一等奖', 5000000);
+            else if (rHit === 6 && bHit === 0) addHit('二等奖', 150000);
+            else if (rHit === 5 && bHit === 1) addHit('三等奖', 3000);
+            else if ((rHit === 5 && bHit === 0) || (rHit === 4 && bHit === 1)) addHit('四等奖', 200);
+            else if ((rHit === 4 && bHit === 0) || (rHit === 3 && bHit === 1)) addHit('五等奖', 10);
+            else if (bHit === 1) addHit('六等奖', 5);
+          });
+        });
+      } else if (ticket.gameId === 'dlt') {
+        const winF = new Set(draw.main);
+        const winB = new Set(draw.sub);
+        const app = ticket.dltAppend ? 1.8 : 1;
+        let fCombos = [];
+        if (ticket.playMode === 'dantuo') {
+          fCombos = getCombinations(ticket.main, 5 - ticket.dan.length).map(c => ticket.dan.concat(c));
+        } else {
+          fCombos = getCombinations(ticket.main, 5);
+        }
+        const bCombos = getCombinations(ticket.sub, 2);
+        fCombos.forEach(fc => {
+          const fHit = fc.filter(x => winF.has(x)).length;
+          bCombos.forEach(bc => {
+            const bHit = bc.filter(x => winB.has(x)).length;
+            if (fHit === 5 && bHit === 2) addHit('一等奖', Math.round(10000000 * app));
+            else if (fHit === 5 && bHit === 1) addHit('二等奖', Math.round(120000 * app));
+            else if (fHit === 5 && bHit === 0) addHit('三等奖', 10000);
+            else if (fHit === 4 && bHit === 2) addHit('四等奖', 3000);
+            else if (fHit === 4 && bHit === 1) addHit('五等奖', 300);
+            else if (fHit === 3 && bHit === 2) addHit('六等奖', 200);
+            else if (fHit === 4 && bHit === 0) addHit('七等奖', 100);
+            else if ((fHit === 3 && bHit === 1) || (fHit === 2 && bHit === 2)) addHit('八等奖', 15);
+            else if (fHit === 3 || (fHit === 1 && bHit === 2) || (fHit === 2 && bHit === 1) || bHit === 2) addHit('九等奖', 5);
+          });
+        });
+      } else if (ticket.gameId === 'qlc') {
+        const winM = new Set(draw.main);
+        const winS = draw.sub[0];
+        let combos = [];
+        if (ticket.playMode === 'dantuo') {
+          combos = getCombinations(ticket.main, 7 - ticket.dan.length).map(c => ticket.dan.concat(c));
+        } else {
+          combos = getCombinations(ticket.main, 7);
+        }
+        combos.forEach(c => {
+          const mHit = c.filter(x => winM.has(x)).length;
+          const sHit = c.includes(winS) ? 1 : 0;
+          if (mHit === 7) addHit('一等奖', 1000000);
+          else if (mHit === 6 && sHit === 1) addHit('二等奖', 20000);
+          else if (mHit === 6) addHit('三等奖', 2000);
+          else if (mHit === 5 && sHit === 1) addHit('四等奖', 200);
+          else if (mHit === 5) addHit('五等奖', 50);
+          else if (mHit === 4 && sHit === 1) addHit('六等奖', 10);
+          else if (mHit === 4) addHit('七等奖', 5);
+        });
+      } else if (ticket.gameId === 'fc3d' || ticket.gameId === 'pl3') {
+        const wStr = draw.main.join('');
+        const wSorted = draw.main.slice().sort((a, b) => a - b);
+        const isTriplet = (wSorted[0] === wSorted[2]);
+        const isPair = (!isTriplet && (wSorted[0] === wSorted[1] || wSorted[1] === wSorted[2]));
+        if (ticket.playMode === 'direct') {
+          const [p0, p1, p2] = ticket.pos;
+          if (p0.includes(draw.main[0]) && p1.includes(draw.main[1]) && p2.includes(draw.main[2])) {
+            addHit('直选奖', 1040);
+          }
+        } else if (ticket.playMode === 'group3') {
+          if (isPair) {
+            const uniq = Array.from(new Set(draw.main));
+            if (uniq.every(d => ticket.main.includes(d))) addHit('组选三', 346);
+          }
+        } else if (ticket.playMode === 'group6') {
+          if (!isTriplet && !isPair) {
+            if (draw.main.every(d => ticket.main.includes(d))) addHit('组选六', 173);
+          }
+        }
+      } else if (ticket.gameId === 'pl5') {
+        const allMatch = draw.main.every((d, idx) => (ticket.pos[idx] || []).includes(d));
+        if (allMatch) addHit('直选奖', 100000);
+      } else if (ticket.gameId === 'qxc') {
+        // Expand Cartesian product (cap safe)
+        const posArr = ticket.pos;
+        const win6 = draw.main;
+        const win7 = draw.sub[0];
+        let combos = [[]];
+        posArr.forEach(arr => {
+          const next = [];
+          combos.forEach(c => arr.forEach(v => { if (next.length < 5000) next.push(c.concat([v])); }));
+          combos = next;
+        });
+        combos.forEach(c => {
+          let fHit = 0;
+          for (let i = 0; i < 6; i++) if (c[i] === win6[i]) fHit++;
+          const lHit = (c[6] === win7) ? 1 : 0;
+          if (fHit === 6 && lHit === 1) addHit('一等奖', 5000000);
+          else if (fHit === 6 && lHit === 0) addHit('二等奖', 40000);
+          else if (fHit === 5 && lHit === 1) addHit('三等奖', 3000);
+          else if ((fHit === 5 && lHit === 0) || (fHit === 4 && lHit === 1)) addHit('四等奖', 500);
+          else if ((fHit === 4 && lHit === 0) || (fHit === 3 && lHit === 1)) addHit('五等奖', 30);
+          else if ((fHit === 3 && lHit === 0) || (fHit === 2 && lHit === 1) || (fHit === 1 && lHit === 1) || lHit === 1) addHit('六等奖', 5);
+        });
+      }
+
+      const summary = Object.keys(tierHits).length
+        ? Object.entries(tierHits).map(([k, v]) => `${k}×${v}`).join(' + ')
+        : '未命中';
+
+      return { hit: totalPrize > 0, prize: totalPrize, summary };
+    }
+
+    function calcPickerBets(game) {
+      const pk = state.picker;
+      if (game.type === 'lotto') {
+        if (state.playMode === 'dantuo') {
+          const dLen = pk.dan.length;
+          const tLen = pk.main.length;
+          if (dLen < 1 || dLen >= game.mainPick || dLen + tLen < game.mainPick) return 0;
+          const mainBets = nCr(tLen, game.mainPick - dLen);
+          const subBets = game.subRange ? nCr(pk.sub.length, game.subPick) : 1;
+          return mainBets * subBets;
+        } else {
+          const mainBets = nCr(pk.main.length, game.mainPick);
+          const subBets = game.subRange ? nCr(pk.sub.length, game.subPick) : 1;
+          return mainBets * subBets;
+        }
+      } else {
+        if (state.playMode === 'direct') {
+          if (!pk.pos || pk.pos.length !== game.positions) return 0;
+          return pk.pos.reduce((acc, arr) => acc * arr.length, 1);
+        } else if (state.playMode === 'group3') {
+          return pk.main.length >= 2 ? pk.main.length * (pk.main.length - 1) : 0;
+        } else if (state.playMode === 'group6') {
+          return nCr(pk.main.length, 3);
+        }
+      }
+      return 0;
+    }
+
+    function resetPickerForGame(game) {
+      state.playMode = game.modes[0].id;
+      if (game.type === 'lotto') {
+        state.picker = { main: [], dan: [], sub: [], pos: [] };
+      } else {
+        state.picker = { main: [], dan: [], sub: [], pos: Array.from({ length: game.positions }, () => []) };
+      }
+    }
+
+    function formatTicketNumbers(ticket) {
+      const g = state.lotteries[ticket.gameId];
+      const isL = g.type === 'lotto';
+      if (isL) {
+        const mainStr = ticket.playMode === 'dantuo'
+          ? `(胆 ${ticket.dan.map(n => pad2(n, true)).join(' ')}) 拖 ${ticket.main.map(n => pad2(n, true)).join(' ')}`
+          : ticket.main.map(n => pad2(n, true)).join(' ');
+        const subStr = ticket.sub && ticket.sub.length ? ` + ${ticket.sub.map(n => pad2(n, true)).join(' ')}` : '';
+        return mainStr + subStr;
+      } else {
+        if (ticket.playMode === 'direct') {
+          return ticket.pos.map((arr, idx) => {
+            const s = arr.map(n => (ticket.gameId === 'qxc' && idx === 6) ? pad2(n, true) : String(n)).join(',');
+            return arr.length > 1 ? `[${s}]` : s;
+          }).join(' | ');
+        }
+        return ticket.main.join(' ');
+      }
+    }
+
+    function getPlayModeLabel(gameId, modeId) {
+      const g = state.lotteries[gameId];
+      const found = g.modes.find(m => m.id === modeId);
+      return found ? found.label : modeId;
+    }
+
+    // =========================================================================
+    // 5. RENDERING FUNCTIONS
+    // =========================================================================
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      const colors = type === 'success'
+        ? 'bg-[#0e2620] border-emerald-500/50 text-emerald-300'
+        : type === 'warn'
+        ? 'bg-[#2a200e] border-amber-500/50 text-amber-300'
+        : 'bg-[#2a1219] border-rose-500/50 text-rose-300';
+      el.className = `toast-enter pointer-events-auto px-3.5 py-2.5 rounded-lg border text-xs font-medium shadow-xl ${colors}`;
+      el.textContent = msg;
+      container.appendChild(el);
+      setTimeout(() => { el.remove(); }, 3800);
+    }
+
+    function renderBallsHTML(game, draw, size = 'sm') {
+      const clsSize = size === 'md' ? 'ball-md' : 'ball-sm';
+      const isL = game.type === 'lotto';
+      let html = '';
+      draw.main.forEach(n => {
+        const color = game.id === 'ssq' || game.id === 'qlc' ? 'ball-red'
+          : game.id === 'dlt' ? 'ball-emerald'
+          : game.id === 'fc3d' ? 'ball-amber'
+          : 'ball-purple';
+        html += `<span class="ball ${clsSize} ${color}">${pad2(n, isL)}</span>`;
+      });
+      if (draw.sub && draw.sub.length) {
+        html += `<span class="text-slate-600 text-xs mx-0.5">+</span>`;
+        draw.sub.forEach(n => {
+          html += `<span class="ball ${clsSize} ball-blue">${pad2(n, true)}</span>`;
+        });
+      }
+      return html;
+    }
+
+    function renderLeftList() {
+      const container = document.getElementById('lotteryListContainer');
+      const q = state.search.trim().toLowerCase();
+      const filtered = LOTTERY_ORDER.map(id => state.lotteries[id]).filter(g => {
+        if (state.filterCat !== 'all' && g.org !== state.filterCat) return false;
+        if (state.filterType === 'lotto' && g.type !== 'lotto') return false;
+        if (state.filterType === 'digit' && g.type !== 'digit') return false;
+        if (state.filterType === 'today' && !g.drawsToday) return false;
+        if (q && !(g.name.toLowerCase().includes(q) || g.nextIssue.includes(q) || g.id.includes(q))) return false;
+        return true;
+      });
+
+      document.getElementById('leftCountBadge').textContent = `${filtered.length} 彩种`;
+
+      if (!filtered.length) {
+        container.innerHTML = `<div class="text-center text-xs text-slate-500 py-8">未找到匹配彩种</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(g => {
+        const active = g.id === state.activeId;
+        const latest = g.history[0];
+        const orgTag = g.org === 'fc'
+          ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30">福彩</span>`
+          : `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">体彩</span>`;
+        const todayTag = g.drawsToday
+          ? `<span class="text-[10px] text-emerald-400 font-semibold">今日开奖</span>`
+          : `<span class="text-[10px] text-slate-500">${g.nextDate.slice(5)}开奖</span>`;
+        const isExp = !!state.expandedLeft[g.id];
+
+        let expHtml = '';
+        if (isExp) {
+          expHtml = `<div class="mt-2.5 pt-2 border-t border-[#1c2b42] flex flex-col gap-1.5">
+            ${g.history.slice(0, 5).map(h => `
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="text-slate-500 font-mono">${h.issue}</span>
+                <span class="font-mono text-slate-300">${h.main.map(v => pad2(v, g.type === 'lotto')).join(' ')}${h.sub && h.sub.length ? ' + <span class="text-sky-400">' + h.sub.map(v => pad2(v, true)).join(' ') + '</span>' : ''}</span>
+              </div>
+            `).join('')}
+          </div>`;
+        }
+
+        return `
+          <div class="card-box p-3 cursor-pointer ${active ? 'card-active' : ''}" data-select-game="${g.id}">
+            <div class="flex items-center justify-between gap-1 mb-2">
+              <div class="flex items-center gap-1.5">
+                ${orgTag}
+                <span class="text-sm font-bold text-slate-100">${g.name}</span>
+                <span class="text-[10px] text-slate-400 font-mono">${g.nextIssue}期</span>
+              </div>
+              ${todayTag}
+            </div>
+            <div class="flex items-center gap-1 flex-wrap mb-2">
+              ${renderBallsHTML(g, latest, 'sm')}
+            </div>
+            <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1.5 border-t border-[#1a273b]">
+              <span class="truncate max-w-[160px]">上期 ${latest.issue} (${latest.date.slice(5)})</span>
+              <button type="button" data-toggle-expand="${g.id}" class="text-sky-400 hover:text-sky-300 font-medium shrink-0">${isExp ? '收起历史 ▲' : '近5期走势 ▼'}</button>
+            </div>
+            ${expHtml}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderCenterWorkspace() {
+      const g = state.lotteries[state.activeId];
+      const analysis = computeAnalysis(g);
+      const latest = g.history[0];
+
+      // Hero header
+      const orgBadge = document.getElementById('heroOrgBadge');
+      orgBadge.textContent = g.orgLabel;
+      orgBadge.className = g.org === 'fc'
+        ? 'text-[11px] font-bold px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30'
+        : 'text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+
+      document.getElementById('heroScheduleText').textContent = g.schedule;
+      document.getElementById('heroCutoffText').textContent = g.cutoff;
+      document.getElementById('heroStatusPill').textContent = g.drawsToday ? '今日开奖 · 推演中' : `${g.nextDate.slice(5)} 开奖 · 推演中`;
+      document.getElementById('heroName').textContent = g.name;
+      document.getElementById('heroNextIssue').textContent = `预测第 ${g.nextIssue} 期`;
+      document.getElementById('heroRuleDesc').textContent = g.ruleDesc;
+      document.getElementById('heroLastIssue').textContent = `${latest.issue}期`;
+      document.getElementById('heroLastDate').textContent = latest.date;
+      document.getElementById('heroLastBalls').innerHTML = renderBallsHTML(g, latest, 'md') + (latest.trial ? `<span class="ml-2 text-[11px] px-2 py-0.5 rounded bg-[#162235] text-amber-300 border border-amber-500/30">试机号 ${latest.trial.join(' ')}</span>` : '');
+      document.getElementById('heroJackpot').textContent = `奖池 / 设奖：${g.jackpot}`;
+      document.getElementById('drawResultInput').placeholder = g.placeholder;
+
+      // History drawer content
+      const histDrawer = document.getElementById('historyDrawer');
+      histDrawer.innerHTML = `
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="text-slate-400 border-b border-[#1d2c42]">
+              <th class="py-1.5 pr-3">期号</th>
+              <th class="py-1.5 pr-3">开奖日期</th>
+              <th class="py-1.5 pr-3">开奖号码</th>
+              <th class="py-1.5 pr-3">和值</th>
+              <th class="py-1.5">跨度</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${g.history.map(h => {
+              const s = h.main.reduce((a, b) => a + b, 0);
+              const sp = Math.max(...h.main) - Math.min(...h.main);
+              return `<tr class="border-b border-[#141f30] hover:bg-[#131f33]">
+                <td class="py-1.5 pr-3 font-mono text-slate-300">${h.issue}</td>
+                <td class="py-1.5 pr-3 font-mono text-slate-400">${h.date}</td>
+                <td class="py-1.5 pr-3"><div class="flex items-center gap-1">${renderBallsHTML(g, h, 'sm')}</div></td>
+                <td class="py-1.5 pr-3 font-mono text-amber-300">${s}</td>
+                <td class="py-1.5 font-mono text-sky-300">${sp}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+
+      // Dimension 01
+      document.getElementById('dim1SampleTag').textContent = `统计样本：近 ${g.history.length} 期真实官方开奖`;
+      const isL = g.type === 'lotto';
+      document.getElementById('dim1Content').innerHTML = `
+        <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg p-3">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-rose-400">🔥 高频热码（近${g.history.length}期活跃）</span>
+            <span class="text-[10px] text-slate-500">出现频次优先</span>
+          </div>
+          <div class="flex flex-wrap gap-1.5 mb-2">
+            ${analysis.hotBalls.map(b => `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/15 border border-rose-500/30 text-xs font-mono font-bold text-rose-300">${pad2(b.num, isL)} <span class="text-[10px] text-rose-400/80">${b.freq}次</span></span>`).join('')}
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">热码反映近期摇奖球动量集中区间，当沙盘“热码追击权重”调高时，核心胆码将优先从该集合抽取。</p>
+        </div>
+        <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg p-3">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-sky-400">❄️ 高遗漏冷码（均值回归重点）</span>
+            <span class="text-[10px] text-slate-500">当前遗漏期数</span>
+          </div>
+          <div class="flex flex-wrap gap-1.5 mb-2">
+            ${analysis.coldBalls.map(b => `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-sky-500/15 border border-sky-500/30 text-xs font-mono font-bold text-sky-300">${pad2(b.num, isL)} <span class="text-[10px] text-sky-400/80">${b.miss !== undefined ? '漏' + b.miss + '期' : b.freq + '次'}</span></span>`).join('')}
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">冷码具备统计回补需求。${isL && analysis.hotSub && analysis.hotSub.length ? `后区/蓝球热码：${analysis.hotSub.map(x => pad2(x.num, true)).join('、')}；冷码：${analysis.coldSub.map(x => pad2(x.num, true)).join('、')}。` : '建议结合奇偶与012路平衡防冷回补。'}</p>
+        </div>
+      `;
+
+      // Dimension 02 Table
+      const lm = analysis.latestMetric;
+      const distLabel = isL ? '三区分布比' : '012路分布比';
+      const distVal = isL ? analysis.lastZones.join(' : ') : analysis.road012.join(' : ');
+      document.getElementById('dim2SummaryPill').textContent = `均值和值 ${analysis.avgSum} · 均跨 ${analysis.avgSpan}`;
+      document.getElementById('dim2TableContainer').innerHTML = `
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="text-slate-400 border-b border-[#1c2b42] bg-[#0b121e]">
+              <th class="py-2 px-2.5">统计维度</th>
+              <th class="py-2 px-2.5">上期 (${latest.issue})</th>
+              <th class="py-2 px-2.5">近${g.history.length}期均值</th>
+              <th class="py-2 px-2.5">下期 (${g.nextIssue}) 建议关注区间</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#172336]">
+            <tr>
+              <td class="py-2 px-2.5 text-slate-300 font-medium">号码和值 (Sum)</td>
+              <td class="py-2 px-2.5 font-mono font-bold text-amber-300">${lm.sum}</td>
+              <td class="py-2 px-2.5 font-mono text-slate-300">${analysis.avgSum}</td>
+              <td class="py-2 px-2.5 text-emerald-400 font-mono">${Math.max(3, Math.round(Number(analysis.avgSum) - (isL ? 18 : 4)))} ~ ${Math.round(Number(analysis.avgSum) + (isL ? 18 : 4))}</td>
+            </tr>
+            <tr>
+              <td class="py-2 px-2.5 text-slate-300 font-medium">首尾跨度 (Span)</td>
+              <td class="py-2 px-2.5 font-mono font-bold text-sky-300">${lm.span}</td>
+              <td class="py-2 px-2.5 font-mono text-slate-300">${analysis.avgSpan}</td>
+              <td class="py-2 px-2.5 text-emerald-400 font-mono">${Math.max(2, Math.round(Number(analysis.avgSpan) - (isL ? 5 : 2)))} ~ ${Math.min(isL ? g.mainRange[1] - 1 : 9, Math.round(Number(analysis.avgSpan) + (isL ? 5 : 2)))}</td>
+            </tr>
+            <tr>
+              <td class="py-2 px-2.5 text-slate-300 font-medium">奇偶比 / 大小比</td>
+              <td class="py-2 px-2.5 font-mono text-slate-200">${lm.odd}:${lm.even} / ${lm.big}:${lm.small}</td>
+              <td class="py-2 px-2.5 font-mono text-slate-400">均衡基准</td>
+              <td class="py-2 px-2.5 text-sky-300 font-mono">${isL ? (g.mainPick === 6 ? '3:3 或 4:2' : g.mainPick === 5 ? '3:2 或 2:3' : '4:3 或 3:4') : (g.positions === 3 ? '2:1 或 1:2' : '3:2 或 2:3')}</td>
+            </tr>
+            <tr>
+              <td class="py-2 px-2.5 text-slate-300 font-medium">${distLabel}</td>
+              <td class="py-2 px-2.5 font-mono text-purple-300">${distVal}</td>
+              <td class="py-2 px-2.5 font-mono text-slate-400">动态轮动</td>
+              <td class="py-2 px-2.5 text-amber-300">防断区回补，关注均衡形态</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+
+      document.getElementById('dim2RadarBox').innerHTML = `
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-1.5">
+          <span class="font-bold text-indigo-300">📡 信号雷达 RADAR 统计参考</span>
+          <span class="text-[11px] text-emerald-400">多维权重实时推算</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300">
+          <div>核心胆码倾向：<span class="font-bold text-amber-300 font-mono">${analysis.danBalls.map(n => pad2(n, isL)).join('、')}</span></div>
+          <div>建议排雷杀号：<span class="font-bold text-rose-400 font-mono">${analysis.killBalls.map(n => pad2(n, isL)).join('、')}</span></div>
+        </div>
+      `;
+
+      // Render Chart.js
+      renderTrendChart(g, analysis);
+
+      // Dimension 03
+      const alertLevel = analysis.alertIndex >= 72 ? '高度防冷' : analysis.alertIndex >= 55 ? '中度防偏' : '形态平稳';
+      document.getElementById('dim3AlertBadge').textContent = `${alertLevel} · 回补指数 ${analysis.alertIndex}/100`;
+      document.getElementById('dim3Content').innerHTML = `
+        <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg p-3">
+          <div class="font-bold text-amber-300 mb-1.5">🎯 推荐定胆参考</div>
+          <div class="flex flex-wrap gap-1.5 mb-1.5">
+            ${analysis.danBalls.map(n => `<span class="ball ball-sm ball-amber">${pad2(n, isL)}</span>`).join('')}
+          </div>
+          <p class="text-[11px] text-slate-400">综合近 ${g.history.length} 期热温频次、邻号斜连与沙盘权重排名前列，适合作为胆拖或复式核心锚点。</p>
+        </div>
+        <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg p-3">
+          <div class="font-bold text-rose-400 mb-1.5">⚠️ 统计排雷杀号</div>
+          <div class="flex flex-wrap gap-1.5 mb-1.5">
+            ${analysis.killBalls.map(n => `<span class="ball ball-sm bg-rose-950 text-rose-300 border border-rose-500/40">${pad2(n, isL)}</span>`).join('')}
+          </div>
+          <p class="text-[11px] text-slate-400">当前模型综合评分靠后的边缘号码，缩水选号时可优先剔除以控制复式成本（仅供参考）。</p>
+        </div>
+      `;
+
+      // Dimension 04 Confidence Bars
+      const hotPct = Math.min(88, Math.max(22, Math.round(35 + state.weights.hot * 0.45)));
+      const balPct = Math.min(90, Math.max(25, Math.round(40 + state.weights.balance * 0.42)));
+      document.getElementById('dim4ConfidenceBars').innerHTML = `
+        <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg p-3">
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-emerald-400 font-semibold">热温主趋势 ${hotPct}%</span>
+            <span class="text-sky-400 font-semibold">冷码回补 ${100 - hotPct}%</span>
+          </div>
+          <div class="w-full h-2 rounded-full bg-[#162235] overflow-hidden flex">
+            <div style="width:${hotPct}%" class="bg-emerald-500 h-full"></div>
+            <div style="width:${100 - hotPct}%" class="bg-sky-500 h-full"></div>
+          </div>
+          <div class="text-[11px] text-slate-400 mt-2">
+            AI 推演参考：<span class="text-slate-100 font-mono font-bold">${
+              isL
+                ? analysis.recMainFull.map(n => pad2(n, true)).join(' ') + (analysis.recSub.length ? ' + ' + analysis.recSub.map(n => pad2(n, true)).join(' ') : '')
+                : analysis.recPosFull.map((arr, idx) => arr.map(v => (g.id === 'qxc' && idx === 6) ? pad2(v, true) : v).join('/')).join(' | ')
+            }</span>
+          </div>
+        </div>
+        <div class="bg-[#0b121e] border border-[#1a293f] rounded-lg p-3">
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-amber-300 font-semibold">区间/和值均衡信度 ${balPct}%</span>
+            <span class="text-rose-400 font-semibold">偏态防冷 ${100 - balPct}%</span>
+          </div>
+          <div class="w-full h-2 rounded-full bg-[#162235] overflow-hidden flex">
+            <div style="width:${balPct}%" class="bg-amber-400 h-full"></div>
+            <div style="width:${100 - balPct}%" class="bg-rose-500 h-full"></div>
+          </div>
+          <div class="text-[11px] text-slate-400 mt-2">
+            精选单式参考：<span class="text-emerald-300 font-mono font-bold">${
+              isL
+                ? analysis.recMainSingle.map(n => pad2(n, true)).join(' ') + (analysis.recSubSingle.length ? ' + ' + analysis.recSubSingle.map(n => pad2(n, true)).join(' ') : '')
+                : analysis.recPosSingle.map((v, idx) => (g.id === 'qxc' && idx === 6) ? pad2(v, true) : v).join(' ')
+            }</span>
+          </div>
+        </div>
+      `;
+
+      // Render Daily 3 Predicted Groups
+      state._currentDaily3 = analysis.daily3Groups;
+      document.getElementById('dim4Daily3Groups').innerHTML = `
+        <div class="flex items-center justify-between gap-2 flex-wrap mb-3 pb-2 border-b border-[#18263b]">
+          <div>
+            <div class="text-xs font-bold text-slate-100">🎯 当期每日 3 组精选预测号码（${g.name} · 第 ${g.nextIssue} 期）</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">每种彩种每日固定生成 3 组独立单式方案，开奖后可一键核对命中</div>
+          </div>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button id="btnSaveGame3ToReview" type="button" class="px-2.5 py-1 rounded text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 hover:bg-emerald-500/25 transition">📌 本彩种3组存复盘</button>
+            <button id="btnSaveAll21ToReview" type="button" class="px-2.5 py-1 rounded text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/35 hover:bg-amber-500/25 transition">🚀 全7彩种(21组)存复盘</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 gap-2">
+          ${analysis.daily3Groups.map((grp, i) => {
+            const sumVal = grp.main.reduce((a, b) => a + b, 0);
+            const oddVal = grp.main.filter(x => x % 2 === 1).length;
+            const spanVal = Math.max(...grp.main) - Math.min(...grp.main);
+            return `
+              <div class="bg-[#090e17] border border-[#1a293f] rounded-lg px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-[11px] font-bold px-2 py-0.5 rounded border ${grp.tagCls}">组${grp.idx} · ${grp.tag}</span>
+                  <div class="flex items-center gap-1 flex-wrap">${renderBallsHTML(g, grp, 'sm')}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-slate-400 font-mono hidden sm:inline">和值${sumVal} · 奇偶${oddVal}:${grp.main.length - oddVal} · 跨度${spanVal}</span>
+                  <button type="button" data-load-daily3="${i}" class="px-2 py-1 rounded text-[11px] bg-[#162235] hover:bg-[#1e2f49] text-sky-300 border border-[#263a57] transition">载入选号</button>
+                  <button type="button" data-save-daily3="${i}" class="px-2 py-1 rounded text-[11px] bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/35 transition">存复盘</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+
+      // Render Play Mode Tabs & Ball Picker
+      renderBallPicker(g);
+
+      // Render Recommended Combo Plans for active lottery
+      renderComboPlans(g, analysis);
+    }
+
+    function renderTrendChart(g, analysis) {
+      const ctx = document.getElementById('trendChartCanvas').getContext('2d');
+      if (trendChartInstance) {
+        trendChartInstance.destroy();
+      }
+      const labels = analysis.series.map(s => s.issue.slice(-3) + '期');
+      const sumData = analysis.series.map(s => s.sum);
+      const spanData = analysis.series.map(s => s.span);
+
+      document.getElementById('chartTitle').textContent = `${g.name} · 近${g.history.length}期和值与跨度走势对比`;
+
+      trendChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '和值 (Sum)',
+              data: sumData,
+              backgroundColor: 'rgba(16, 185, 129, 0.55)',
+              borderColor: '#10b981',
+              borderWidth: 1,
+              borderRadius: 4,
+              yAxisID: 'y'
+            },
+            {
+              label: '跨度 (Span)',
+              data: spanData,
+              type: 'line',
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.2)',
+              borderWidth: 2,
+              pointRadius: 3.5,
+              pointBackgroundColor: '#fbbf24',
+              tension: 0.3,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { labels: { color: '#94a3b8', font: { size: 11 } } }
+          },
+          scales: {
+            x: { ticks: { color: '#7e92b0', font: { size: 10 } }, grid: { color: 'rgba(30,45,68,0.4)' } },
+            y: { position: 'left', ticks: { color: '#10b981', font: { size: 10 } }, grid: { color: 'rgba(30,45,68,0.4)' } },
+            y1: { position: 'right', ticks: { color: '#f59e0b', font: { size: 10 } }, grid: { drawOnChartArea: false } }
+          }
+        }
+      });
+    }
+
+    function renderBallPicker(g) {
+      const tabsEl = document.getElementById('playModeTabs');
+      tabsEl.innerHTML = g.modes.map(m => `
+        <button type="button" data-play-mode="${m.id}" class="px-2.5 py-1 rounded text-xs font-semibold transition ${state.playMode === m.id ? 'bg-emerald-600 text-white' : 'bg-[#142033] text-slate-400 hover:text-slate-200'}">${m.label}</button>
+      `).join('');
+
+      const area = document.getElementById('ballPickerArea');
+      const pk = state.picker;
+
+      if (g.type === 'lotto') {
+        const [minM, maxM] = g.mainRange;
+        const isDantuo = state.playMode === 'dantuo';
+        const mainColor = g.id === 'dlt' ? 'ball-emerald' : 'ball-red';
+        let mainHtml = '';
+        for (let v = minM; v <= maxM; v++) {
+          const isDan = isDantuo && pk.dan.includes(v);
+          const isSel = pk.main.includes(v);
+          const cls = isDan ? `${mainColor} ball-dan` : isSel ? mainColor : 'ball-idle';
+          mainHtml += `<button type="button" data-pick-zone="main" data-pick-val="${v}" class="ball ball-lg ${cls}" title="${isDantuo ? '点击切换 拖码/胆码/取消' : '点击选择'}">${pad2(v, true)}</button>`;
+        }
+
+        let subSection = '';
+        if (g.subRange) {
+          const [minS, maxS] = g.subRange;
+          let subHtml = '';
+          for (let v = minS; v <= maxS; v++) {
+            const isSel = pk.sub.includes(v);
+            subHtml += `<button type="button" data-pick-zone="sub" data-pick-val="${v}" class="ball ball-lg ${isSel ? 'ball-blue' : 'ball-idle'}">${pad2(v, true)}</button>`;
+          }
+          subSection = `
+            <div>
+              <div class="text-xs font-semibold text-sky-400 mb-2">${g.id === 'dlt' ? '后区选号' : '蓝球选号'}（至少选 ${g.subPick} 个 · 已选 ${pk.sub.length} 个）</div>
+              <div class="flex flex-wrap gap-1.5">${subHtml}</div>
+            </div>
+          `;
+        }
+
+        area.innerHTML = `
+          <div>
+            <div class="text-xs font-semibold text-rose-300 mb-2">
+              ${g.id === 'dlt' ? '前区选号' : g.id === 'qlc' ? '基本号码区' : '红球选号'}
+              ${isDantuo ? `（胆拖模式：金圈=胆码[${pk.dan.length}/${g.mainPick - 1}]，红/绿球=拖码[${pk.main.length}]，再次点击拖码可设为胆码）` : `（至少选 ${g.mainPick} 个 · 已选 ${pk.main.length} 个）`}
+            </div>
+            <div class="flex flex-wrap gap-1.5">${mainHtml}</div>
+          </div>
+          ${subSection}
+        `;
+      } else {
+        if (state.playMode === 'direct') {
+          const posNames = g.positions === 3 ? ['百位', '十位', '个位']
+            : g.positions === 5 ? ['万位', '千位', '百位', '十位', '个位']
+            : ['第一位', '第二位', '第三位', '第四位', '第五位', '第六位', '第七位(0-14)'];
+          area.innerHTML = posNames.map((label, pIdx) => {
+            const maxD = (g.id === 'qxc' && pIdx === 6) ? 14 : 9;
+            const selArr = pk.pos[pIdx] || [];
+            let btns = '';
+            for (let d = 0; d <= maxD; d++) {
+              const isSel = selArr.includes(d);
+              const color = (g.id === 'qxc' && pIdx === 6) ? 'ball-blue' : 'ball-amber';
+              btns += `<button type="button" data-pick-zone="pos" data-pick-pos="${pIdx}" data-pick-val="${d}" class="ball ball-lg ${isSel ? color : 'ball-idle'}">${(g.id === 'qxc' && pIdx === 6) ? pad2(d, true) : d}</button>`;
+            }
+            return `
+              <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                <span class="text-xs font-semibold text-slate-300 w-24 shrink-0">${label}</span>
+                <div class="flex flex-wrap gap-1.5">${btns}</div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          // group3 or group6
+          const minReq = state.playMode === 'group3' ? 2 : 3;
+          let btns = '';
+          for (let d = 0; d <= 9; d++) {
+            const isSel = pk.main.includes(d);
+            btns += `<button type="button" data-pick-zone="main" data-pick-val="${d}" class="ball ball-lg ${isSel ? 'ball-amber' : 'ball-idle'}">${d}</button>`;
+          }
+          area.innerHTML = `
+            <div>
+              <div class="text-xs font-semibold text-amber-300 mb-2">${state.playMode === 'group3' ? '组选三复式（至少选 2 个号）' : '组选六复式（至少选 3 个号）'} · 已选 ${pk.main.length} 个</div>
+              <div class="flex flex-wrap gap-1.5">${btns}</div>
+            </div>
+          `;
+        }
+      }
+
+      updatePickerSummary(g);
+    }
+
+    function updatePickerSummary(g) {
+      const bets = calcPickerBets(g);
+      const unitPrice = (g.id === 'dlt' && state.dltAppend) ? 3 : 2;
+      document.getElementById('pickerBetCount').textContent = bets;
+      document.getElementById('pickerCost').textContent = bets * unitPrice;
+      document.getElementById('pickerHint').textContent = bets === 0 ? '（请选满最低投注要求）' : `（单注${unitPrice}元）`;
+    }
+
+    function buildComboPlans(g, analysis) {
+      if (g.type === 'lotto') {
+        const subA = g.subRange ? analysis.recSub.slice(0, g.subPick + 1) : [];
+        const subB = g.subRange ? analysis.recSub.slice(0, g.subPick) : [];
+        const mainA = analysis.recMainFull.slice(0, g.mainPick + 2);
+        const danB = analysis.danBalls;
+        const tuoB = analysis.recMainFull.filter(x => !danB.includes(x)).slice(0, g.mainPick + 1 - danB.length + 1);
+        const mainC = analysis.recMainSingle;
+        const subC = g.subRange ? analysis.recSubSingle : [];
+
+        return [
+          {
+            code: 'A', tag: '低波动复式', tagCls: 'bg-emerald-500/15 text-emerald-400',
+            title: `方案 A · ${g.name}稳健小复式`,
+            playMode: 'standard',
+            main: mainA, dan: [], sub: subA, pos: [],
+            bets: nCr(mainA.length, g.mainPick) * (g.subRange ? nCr(subA.length, g.subPick) : 1),
+            desc: '覆盖高分热温区+1枚回补冷码，兼顾中奖覆盖面'
+          },
+          {
+            code: 'B', tag: '胆拖降本', tagCls: 'bg-sky-500/15 text-sky-300',
+            title: `方案 B · ${g.name}核心胆拖`,
+            playMode: 'dantuo',
+            main: tuoB, dan: danB, sub: subB, pos: [],
+            bets: nCr(tuoB.length, g.mainPick - danB.length) * (g.subRange ? nCr(subB.length, g.subPick) : 1),
+            desc: '锁定四维双胆，显著压缩复式投入成本'
+          },
+          {
+            code: 'C', tag: '精选单式', tagCls: 'bg-amber-500/15 text-amber-300',
+            title: `方案 C · ${g.name}高赔精选单式`,
+            playMode: 'standard',
+            main: mainC, dan: [], sub: subC, pos: [],
+            bets: 1,
+            desc: '2元极简博弈，直指四维模型最高权重组合'
+          }
+        ];
+      } else {
+        const posA = analysis.recPosFull.map(a => a.slice(0, 2));
+        const posC = analysis.recPosSingle.map(v => [v]);
+        const betsA = posA.reduce((acc, a) => acc * a.length, 1);
+
+        const plans = [
+          {
+            code: 'A', tag: '定位小复式', tagCls: 'bg-emerald-500/15 text-emerald-400',
+            title: `方案 A · ${g.name}每位2码复式`,
+            playMode: 'direct', main: [], dan: [], sub: [], pos: posA,
+            bets: betsA,
+            desc: '各位取四维评分前2码，兼顾热码与遗漏回补'
+          }
+        ];
+
+        if (g.id === 'fc3d' || g.id === 'pl3') {
+          const g6Nums = Array.from(new Set([...analysis.hotBalls.map(x => x.num), ...analysis.coldBalls.slice(0, 2).map(x => x.num)])).slice(0, 5).sort((a, b) => a - b);
+          plans.push({
+            code: 'B', tag: '组六容错', tagCls: 'bg-sky-500/15 text-sky-300',
+            title: `方案 B · ${g.name}组选六 5 码复式`,
+            playMode: 'group6', main: g6Nums, dan: [], sub: [], pos: [],
+            bets: nCr(g6Nums.length, 3),
+            desc: '不限排列顺序，大幅提升数字型容错率'
+          });
+        } else {
+          const posB = analysis.recPosFull.map((a, idx) => idx < 2 ? a.slice(0, 2) : [a[0]]);
+          plans.push({
+            code: 'B', tag: '重点定位', tagCls: 'bg-sky-500/15 text-sky-300',
+            title: `方案 B · ${g.name}前位双码精选`,
+            playMode: 'direct', main: [], dan: [], sub: [], pos: posB,
+            bets: posB.reduce((acc, a) => acc * a.length, 1),
+            desc: '聚焦高波动前两位双选，后位单挑降成本'
+          });
+        }
+
+        plans.push({
+          code: 'C', tag: '精选直选', tagCls: 'bg-amber-500/15 text-amber-300',
+          title: `方案 C · ${g.name}单式定位直选`,
+          playMode: 'direct', main: [], dan: [], sub: [], pos: posC,
+          bets: 1,
+          desc: '单注2元直指各位置四维榜首数字'
+        });
+        return plans;
+      }
+    }
+
+    function renderComboPlans(g, analysis) {
+      const plans = buildComboPlans(g, analysis);
+      state._currentPlans = plans;
+      const container = document.getElementById('comboPlansContainer');
+      container.innerHTML = plans.map((p, idx) => {
+        const ticketPreview = formatTicketNumbers({ gameId: g.id, ...p });
+        const cost = p.bets * 2;
+        return `
+          <div class="bg-[#0b121e] border border-[#1d2e47] rounded-lg p-3">
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <span class="text-xs font-bold text-slate-100">${p.title}</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${p.tagCls}">${p.tag}</span>
+            </div>
+            <div class="text-[11px] font-mono text-emerald-300 bg-[#080d16] border border-[#172336] rounded px-2 py-1.5 mb-1.5 break-all">${ticketPreview}</div>
+            <div class="flex items-center justify-between text-[11px] text-slate-400 mb-2">
+              <span>${p.bets} 注 · 模拟投入 <b class="text-amber-300">${cost}元</b></span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button type="button" data-load-plan="${idx}" class="py-1 rounded text-[11px] font-semibold bg-[#162235] hover:bg-[#1e2f49] text-sky-300 border border-[#263a57] transition">载入推盘单</button>
+              <button type="button" data-save-plan="${idx}" class="py-1 rounded text-[11px] font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/35 transition">存至复盘区</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSlip() {
+      const list = document.getElementById('slipList');
+      document.getElementById('slipCount').textContent = state.slip.length;
+      const hasDlt = state.slip.some(t => t.gameId === 'dlt') || state.activeId === 'dlt';
+      const dltRow = document.getElementById('dltAppendRow');
+      if (hasDlt) { dltRow.classList.remove('hidden'); dltRow.classList.add('flex'); }
+      else { dltRow.classList.add('hidden'); dltRow.classList.remove('flex'); }
+
+      if (!state.slip.length) {
+        list.innerHTML = `<div class="text-center text-[11px] text-slate-500 py-5 border border-dashed border-[#1f304a] rounded-lg">暂未选择方案，请在中间【最终研判】点选号码或载入下方推荐方案</div>`;
+        document.getElementById('slipTotalCost').textContent = '0 元';
+        return;
+      }
+
+      let totalCost = 0;
+      list.innerHTML = state.slip.map((t, idx) => {
+        const g = state.lotteries[t.gameId];
+        const unit = (t.gameId === 'dlt' && state.dltAppend) ? 3 : 2;
+        const cost = t.bets * unit * state.multiplier;
+        totalCost += cost;
+        return `
+          <div class="bg-[#0b121e] border border-[#1d2e47] rounded-lg p-2.5 text-xs">
+            <div class="flex items-center justify-between gap-1 mb-1">
+              <span class="font-bold text-slate-100">${g.name} <span class="text-amber-300 font-mono text-[10px]">${t.issue}期</span> <span class="text-slate-400 font-normal text-[10px]">${getPlayModeLabel(t.gameId, t.playMode)}</span></span>
+              <button type="button" data-remove-slip="${idx}" class="text-slate-500 hover:text-rose-400 text-xs">✕</button>
+            </div>
+            <div class="font-mono text-[11px] text-emerald-300 break-all mb-1">${formatTicketNumbers(t)}</div>
+            <div class="text-[10px] text-slate-400 flex justify-between">
+              <span>${t.bets}注 × ${state.multiplier}倍${(t.gameId === 'dlt' && state.dltAppend) ? ' (追加)' : ''}</span>
+              <span class="text-amber-300 font-mono">${cost} 元</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('slipTotalCost').textContent = `${totalCost} 元`;
+    }
+
+    function renderReviews() {
+      document.getElementById('topReviewCount').textContent = state.reviews.length;
+
+      const filtered = state.reviews.filter(r => {
+        if (state.reviewFilter === 'all') return true;
+        return state.lotteries[r.gameId].org === state.reviewFilter;
+      });
+
+      const settled = filtered.filter(r => r.status !== 'pending');
+      const hits = settled.filter(r => r.status === 'hit');
+      const totalPrize = hits.reduce((a, b) => a + (b.prize || 0), 0);
+
+      document.getElementById('kpiTotalReviews').textContent = filtered.length;
+      document.getElementById('kpiHitReviews').textContent = hits.length;
+      document.getElementById('kpiTotalPrize').textContent = `¥${totalPrize.toLocaleString()}`;
+
+      const renderCard = (r) => {
+        const g = state.lotteries[r.gameId];
+        let badge = `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-700/60 text-slate-300">待开奖</span>`;
+        if (r.status === 'hit') {
+          badge = `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">红单命中 · ¥${r.prize.toLocaleString()}</span>`;
+        } else if (r.status === 'miss') {
+          badge = `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">未命中</span>`;
+        }
+
+        return `
+          <div class="bg-[#0b121e] border border-[#1c2b42] rounded-lg p-2.5 text-xs">
+            <div class="flex items-center justify-between gap-1 mb-1">
+              <span class="font-bold text-slate-100">${g.name} <span class="text-slate-400 font-mono text-[10px]">${r.issue}期</span></span>
+              ${badge}
+            </div>
+            <div class="font-mono text-[11px] text-sky-300 break-all mb-1">${formatTicketNumbers(r)}</div>
+            ${r.drawResult ? `<div class="text-[10px] text-amber-300/90 font-mono mb-1">开奖号：${r.drawResult} (${r.hitSummary})</div>` : ''}
+            <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-[#152033]">
+              <span>${getPlayModeLabel(r.gameId, r.playMode)} · 投入¥${r.cost}</span>
+              <div class="flex items-center gap-2">
+                <button type="button" data-check-review="${r.id}" class="text-emerald-400 hover:text-emerald-300 font-semibold">一键核对</button>
+                <button type="button" data-delete-review="${r.id}" class="text-slate-500 hover:text-rose-400">删除</button>
+              </div>
+            </div>
+          </div>
+        `;
+      };
+
+      const sideEl = document.getElementById('reviewListContainer');
+      const modalEl = document.getElementById('modalReviewBody');
+      if (!filtered.length) {
+        const emptyHtml = `<div class="text-center text-[11px] text-slate-500 py-6">暂无复盘方案，可点击上方“存至复盘区”保存当期预测单，开奖后一键核对命中。</div>`;
+        sideEl.innerHTML = emptyHtml;
+        modalEl.innerHTML = emptyHtml;
+      } else {
+        const html = filtered.map(renderCard).join('');
+        sideEl.innerHTML = html;
+        modalEl.innerHTML = html;
+      }
+    }
+
+    // =========================================================================
+    // 6. CORE ACTIONS: VERIFY DRAW, ADVANCE NEXT ISSUE, LIVE SYNC & PARSER
+    // =========================================================================
+    function incrementIssue(issueStr) {
+      const num = parseInt(issueStr, 10);
+      return isNaN(num) ? issueStr + '_next' : String(num + 1);
+    }
+
+    function parseDrawString(game, rawText) {
+      const cleaned = rawText.trim().replace(/[，,、|]/g, ' ');
+      const parts = cleaned.split('+');
+      const mainNums = (parts[0].match(/\d+/g) || []).map(Number);
+      const subNums = parts[1] ? (parts[1].match(/\d+/g) || []).map(Number) : [];
+
+      if (game.id === 'ssq') {
+        if (mainNums.length >= 7 && subNums.length === 0) return { main: mainNums.slice(0, 6).sort((a, b) => a - b), sub: [mainNums[6]] };
+        if (mainNums.length === 6 && subNums.length === 1) return { main: mainNums.sort((a, b) => a - b), sub: subNums };
+        return null;
+      }
+      if (game.id === 'dlt') {
+        if (mainNums.length >= 7 && subNums.length === 0) return { main: mainNums.slice(0, 5).sort((a, b) => a - b), sub: mainNums.slice(5, 7).sort((a, b) => a - b) };
+        if (mainNums.length === 5 && subNums.length === 2) return { main: mainNums.sort((a, b) => a - b), sub: subNums.sort((a, b) => a - b) };
+        return null;
+      }
+      if (game.id === 'qlc') {
+        if (mainNums.length >= 8 && subNums.length === 0) return { main: mainNums.slice(0, 7).sort((a, b) => a - b), sub: [mainNums[7]] };
+        if (mainNums.length === 7 && subNums.length === 1) return { main: mainNums.sort((a, b) => a - b), sub: subNums };
+        return null;
+      }
+      if (game.id === 'fc3d' || game.id === 'pl3') {
+        const digits = mainNums.length === 1 && String(parts[0].trim()).length === 3 ? parts[0].trim().split('').map(Number) : mainNums;
+        return digits.length === 3 ? { main: digits, sub: [] } : null;
+      }
+      if (game.id === 'pl5') {
+        const digits = mainNums.length === 1 && String(parts[0].trim()).length === 5 ? parts[0].trim().split('').map(Number) : mainNums;
+        return digits.length === 5 ? { main: digits, sub: [] } : null;
+      }
+      if (game.id === 'qxc') {
+        if (mainNums.length === 6 && subNums.length === 1) return { main: mainNums, sub: subNums };
+        if (mainNums.length === 7 && subNums.length === 0) return { main: mainNums.slice(0, 6), sub: [mainNums[6]] };
+        return null;
+      }
+      return null;
+    }
+
+    function applyNewDrawResult(gameId, issue, dateStr, parsedDraw) {
+      const g = state.lotteries[gameId];
+      const existsIdx = g.history.findIndex(h => h.issue === issue);
+      const record = { issue, date: dateStr, main: parsedDraw.main, sub: parsedDraw.sub };
+      if (existsIdx >= 0) {
+        g.history[existsIdx] = record;
+      } else {
+        g.history.unshift(record);
+        if (g.history.length > 30) g.history.pop();
+      }
+      // Advance nextIssue if settled issue >= current nextIssue
+      if (parseInt(issue, 10) >= parseInt(g.nextIssue, 10)) {
+        g.nextIssue = incrementIssue(issue);
+      }
+      // Settle matching review tickets
+      let checked = 0, hits = 0;
+      state.reviews.forEach(r => {
+        if (r.gameId === gameId && r.issue === issue) {
+          const res = evaluateTicketAgainstDraw(r, record);
+          r.status = res.hit ? 'hit' : 'miss';
+          r.prize = res.prize;
+          r.hitSummary = res.summary;
+          r.drawResult = record.main.map(v => pad2(v, g.type === 'lotto')).join(' ') + (record.sub.length ? ' + ' + record.sub.map(v => pad2(v, true)).join(' ') : '');
+          checked++;
+          if (res.hit) hits++;
+        }
+      });
+      persistState();
+      return { checked, hits };
+    }
+
+    function checkAllPendingReviews() {
+      let checkedCount = 0, hitCount = 0, totalPrize = 0;
+      state.reviews.forEach(r => {
+        const g = state.lotteries[r.gameId];
+        const matchDraw = g.history.find(h => h.issue === r.issue);
+        if (matchDraw) {
+          const res = evaluateTicketAgainstDraw(r, matchDraw);
+          r.status = res.hit ? 'hit' : 'miss';
+          r.prize = res.prize;
+          r.hitSummary = res.summary;
+          r.drawResult = matchDraw.main.map(v => pad2(v, g.type === 'lotto')).join(' ') + (matchDraw.sub.length ? ' + ' + matchDraw.sub.map(v => pad2(v, true)).join(' ') : '');
+          checkedCount++;
+          if (res.hit) { hitCount++; totalPrize += res.prize; }
+        }
+      });
+      persistState();
+      renderReviews();
+      if (checkedCount > 0) {
+        showToast(`核对完成！已结算 ${checkedCount} 组方案，命中 ${hitCount} 组，模拟奖金 ¥${totalPrize.toLocaleString()}`, hitCount > 0 ? 'success' : 'warn');
+      } else {
+        showToast('当前复盘单对应期次尚未开奖，请在开奖后点击“同步实时开奖”或手动录入开奖号。', 'warn');
+      }
+    }
+
+    async function runLiveSync() {
+      const btn = document.getElementById('btnSyncLive');
+      btn.disabled = true;
+      document.getElementById('syncSpinIcon').textContent = '⏳';
+
+      const endpoints = [];
+      if (state.syncConfig.scfUrl && state.syncConfig.scfUrl.startsWith('https://')) {
+        endpoints.push({ name: '腾讯云 SCF 云函数', url: state.syncConfig.scfUrl });
+      }
+      if (state.syncConfig.localJsonUrl) {
+        endpoints.push({ name: '本地仓库数据', url: state.syncConfig.localJsonUrl });
+      }
+
+      let synced = false;
+      for (const ep of endpoints) {
+        try {
+          const resp = await fetch(ep.url, { cache: 'no-store' });
+          if (!resp.ok) continue;
+          const payload = await resp.json();
+          const dataMap = payload.lotteries || payload;
+          let updatedGames = 0;
+          LOTTERY_ORDER.forEach(id => {
+            if (dataMap[id] && Array.isArray(dataMap[id].history) && dataMap[id].history.length) {
+              state.lotteries[id].history = dataMap[id].history;
+              if (dataMap[id].nextIssue) state.lotteries[id].nextIssue = dataMap[id].nextIssue;
+              if (dataMap[id].jackpot) state.lotteries[id].jackpot = dataMap[id].jackpot;
+              updatedGames++;
+            }
+          });
+          if (updatedGames > 0) {
+            synced = true;
+            persistState();
+            checkAllPendingReviews();
+            renderAll();
+            const nowStr = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+            document.getElementById('syncStatusText').textContent = `• 已通过${ep.name}同步 (${updatedGames}彩种 · ${nowStr})`;
+            showToast(`${ep.name}实时同步成功！已更新 ${updatedGames} 个彩种最新开奖与下期预测。`, 'success');
+            break;
+          }
+        } catch (err) {
+          // Try next endpoint gracefully
+        }
+      }
+
+      if (!synced) {
+        checkAllPendingReviews();
+        renderAll();
+        showToast('已完成本地内置官方库（2026-11-24）核对；如需云端实时抓数，请在“导入/云函数配置”填入您的腾讯云 SCF 地址。', 'warn');
+      }
+
+      btn.disabled = false;
+      document.getElementById('syncSpinIcon').textContent = '🔄';
+    }
+
+    function parsePastedWebText(text) {
+      const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+      const nameMap = {
+        '双色球': 'ssq', 'ssq': 'ssq',
+        '福彩3d': 'fc3d', '3d': 'fc3d', 'fc3d': 'fc3d',
+        '七乐彩': 'qlc', 'qlc': 'qlc',
+        '大乐透': 'dlt', '超级大乐透': 'dlt', 'dlt': 'dlt',
+        '七星彩': 'qxc', '7星彩': 'qxc', 'qxc': 'qxc',
+        '排列三': 'pl3', '排列3': 'pl3', 'pl3': 'pl3',
+        '排列五': 'pl5', '排列5': 'pl5', 'pl5': 'pl5'
+      };
+      let updated = 0;
+      lines.forEach(line => {
+        const lower = line.toLowerCase();
+        let gameId = null;
+        for (const [k, v] of Object.entries(nameMap)) {
+          if (lower.includes(k)) { gameId = v; break; }
+        }
+        if (!gameId) return;
+        const issueMatch = line.match(/\b(20\d{5}|26\d{3})\b/);
+        const dateMatch = line.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+        const g = state.lotteries[gameId];
+        const issue = issueMatch ? issueMatch[1] : g.nextIssue;
+        const dateStr = dateMatch ? dateMatch[1] : new Date().toISOString().slice(0, 10);
+        // Strip game name, issue, date to isolate numbers
+        let numPart = line
+          .replace(/双色球|福彩3D|3D|七乐彩|超级大乐透|大乐透|七星彩|7星彩|排列三|排列3|排列五|排列5/gi, '')
+          .replace(issue, '')
+          .replace(dateStr, '')
+          .replace(/期/g, '');
+        const parsed = parseDrawString(g, numPart);
+        if (parsed) {
+          applyNewDrawResult(gameId, issue, dateStr, parsed);
+          updated++;
+        }
+      });
+      return updated;
+    }
+
+    function renderAll() {
+      renderLeftList();
+      renderCenterWorkspace();
+      renderSlip();
+      renderReviews();
+    }
+
+    // =========================================================================
+    // 7. EVENT LISTENERS & DELEGATION
+    // =========================================================================
+    function bindEvents() {
+      // Live clock
+      setInterval(() => {
+        document.getElementById('liveClock').textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+      }, 1000);
+
+      // Search & left filters
+      document.getElementById('searchInput').addEventListener('input', e => {
+        state.search = e.target.value;
+        renderLeftList();
+      });
+
+      document.getElementById('catFilterBar').addEventListener('click', e => {
+        const btn = e.target.closest('[data-cat]');
+        if (!btn) return;
+        state.filterCat = btn.dataset.cat;
+        document.querySelectorAll('.cat-tab').forEach(b => {
+          b.className = b.dataset.cat === state.filterCat
+            ? 'cat-tab px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white'
+            : 'cat-tab px-2.5 py-1 rounded-md font-medium bg-[#142033] text-slate-300 hover:text-white';
+        });
+        renderLeftList();
+      });
+
+      document.getElementById('typeFilterBar').addEventListener('click', e => {
+        const btn = e.target.closest('[data-type]');
+        if (!btn) return;
+        state.filterType = btn.dataset.type;
+        document.querySelectorAll('.type-tab').forEach(b => {
+          b.className = b.dataset.type === state.filterType
+            ? 'type-tab py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-semibold'
+            : 'type-tab py-1 rounded bg-[#121c2c] text-slate-400 border border-[#1e2d44] hover:text-slate-200';
+        });
+        renderLeftList();
+      });
+
+      // Left lottery card click & expand
+      document.getElementById('lotteryListContainer').addEventListener('click', e => {
+        const expBtn = e.target.closest('[data-toggle-expand]');
+        if (expBtn) {
+          e.stopPropagation();
+          const id = expBtn.dataset.toggleExpand;
+          state.expandedLeft[id] = !state.expandedLeft[id];
+          renderLeftList();
+          return;
+        }
+        const card = e.target.closest('[data-select-game]');
+        if (card) {
+          state.activeId = card.dataset.selectGame;
+          resetPickerForGame(state.lotteries[state.activeId]);
+          renderAll();
+        }
+      });
+
+      // Center sliders
+      const sliderMap = [
+        ['sliderHot', 'hot', 'valHotWeight'],
+        ['sliderCold', 'cold', 'valColdWeight'],
+        ['sliderBalance', 'balance', 'valBalanceWeight'],
+        ['sliderRepeat', 'repeat', 'valRepeatWeight']
+      ];
+      sliderMap.forEach(([elId, key, valId]) => {
+        document.getElementById(elId).addEventListener('input', e => {
+          state.weights[key] = Number(e.target.value);
+          document.getElementById(valId).textContent = e.target.value;
+          renderCenterWorkspace();
+        });
+      });
+
+      document.getElementById('btnResetWeights').addEventListener('click', () => {
+        state.weights = { hot: 65, cold: 55, balance: 70, repeat: 45 };
+        sliderMap.forEach(([elId, key, valId]) => {
+          document.getElementById(elId).value = state.weights[key];
+          document.getElementById(valId).textContent = state.weights[key];
+        });
+        renderCenterWorkspace();
+        showToast('已恢复四维模型默认权重。', 'success');
+      });
+
+      // History drawer toggle
+      document.getElementById('btnToggleHistoryDrawer').addEventListener('click', () => {
+        document.getElementById('historyDrawer').classList.toggle('hidden');
+      });
+
+      // Auto-fill latest draw for quick test
+      document.getElementById('btnAutoFillSampleDraw').addEventListener('click', () => {
+        const g = state.lotteries[state.activeId];
+        const latest = g.history[0];
+        const str = latest.main.map(v => pad2(v, g.type === 'lotto')).join(' ') + (latest.sub.length ? ' + ' + latest.sub.map(v => pad2(v, true)).join(' ') : '');
+        document.getElementById('drawResultInput').value = str;
+      });
+
+      // One-click verify draw & advance next issue
+      document.getElementById('btnVerifyDrawAndAdvance').addEventListener('click', () => {
+        const g = state.lotteries[state.activeId];
+        const raw = document.getElementById('drawResultInput').value;
+        const parsed = parseDrawString(g, raw);
+        if (!parsed) {
+          showToast(`开奖号格式有误，请参考：${g.placeholder}`, 'error');
+          return;
+        }
+        const issue = g.nextIssue;
+        const today = new Date().toISOString().slice(0, 10);
+        const res = applyNewDrawResult(g.id, issue, today, parsed);
+        document.getElementById('drawResultInput').value = '';
+        renderAll();
+        showToast(`${g.name} 第${issue}期已录入并自动推进至第${g.nextIssue}期！核对复盘单 ${res.checked} 组（命中 ${res.hits} 组）。`, 'success');
+      });
+
+      // Play mode tabs
+      document.getElementById('playModeTabs').addEventListener('click', e => {
+        const btn = e.target.closest('[data-play-mode]');
+        if (!btn) return;
+        const g = state.lotteries[state.activeId];
+        state.playMode = btn.dataset.playMode;
+        state.picker = g.type === 'lotto'
+          ? { main: [], dan: [], sub: [], pos: [] }
+          : { main: [], dan: [], sub: [], pos: Array.from({ length: g.positions }, () => []) };
+        renderBallPicker(g);
+      });
+
+      // Ball picker clicks
+      document.getElementById('ballPickerArea').addEventListener('click', e => {
+        const btn = e.target.closest('[data-pick-zone]');
+        if (!btn) return;
+        const g = state.lotteries[state.activeId];
+        const zone = btn.dataset.pickZone;
+        const val = Number(btn.dataset.pickVal);
+        const pk = state.picker;
+
+        if (zone === 'main') {
+          if (state.playMode === 'dantuo') {
+            if (pk.dan.includes(val)) {
+              pk.dan = pk.dan.filter(x => x !== val);
+            } else if (pk.main.includes(val)) {
+              pk.main = pk.main.filter(x => x !== val);
+              if (pk.dan.length < g.mainPick - 1) pk.dan.push(val);
+              pk.dan.sort((a, b) => a - b);
+            } else {
+              pk.main.push(val);
+              pk.main.sort((a, b) => a - b);
+            }
+          } else {
+            if (pk.main.includes(val)) pk.main = pk.main.filter(x => x !== val);
+            else { pk.main.push(val); pk.main.sort((a, b) => a - b); }
+          }
+        } else if (zone === 'sub') {
+          if (pk.sub.includes(val)) pk.sub = pk.sub.filter(x => x !== val);
+          else { pk.sub.push(val); pk.sub.sort((a, b) => a - b); }
+        } else if (zone === 'pos') {
+          const pIdx = Number(btn.dataset.pickPos);
+          const arr = pk.pos[pIdx];
+          if (arr.includes(val)) pk.pos[pIdx] = arr.filter(x => x !== val);
+          else { arr.push(val); arr.sort((a, b) => a - b); }
+        }
+        renderBallPicker(g);
+      });
+
+      // Fill AI recommendation
+      document.getElementById('btnFillAI').addEventListener('click', () => {
+        const g = state.lotteries[state.activeId];
+        const analysis = computeAnalysis(g);
+        if (g.type === 'lotto') {
+          if (state.playMode === 'dantuo') {
+            state.picker.dan = analysis.danBalls.slice();
+            state.picker.main = analysis.recMainFull.filter(x => !state.picker.dan.includes(x)).slice(0, g.mainPick);
+          } else {
+            state.picker.dan = [];
+            state.picker.main = analysis.recMainFull.slice(0, g.mainPick + 1);
+          }
+          state.picker.sub = g.subRange ? analysis.recSub.slice(0, g.subPick + 1) : [];
+        } else {
+          if (state.playMode === 'direct') {
+            state.picker.pos = analysis.recPosFull.map(a => a.slice(0, 2));
+          } else {
+            state.picker.main = analysis.hotBalls.map(x => x.num).slice(0, 4).sort((a, b) => a - b);
+          }
+        }
+        renderBallPicker(g);
+        showToast(`已填入 ${g.name} 四维推演高分号码！`, 'success');
+      });
+
+      // Random pick
+      document.getElementById('btnRandomPick').addEventListener('click', () => {
+        const g = state.lotteries[state.activeId];
+        const pickRand = (min, max, cnt) => {
+          const pool = [];
+          for (let i = min; i <= max; i++) pool.push(i);
+          const out = [];
+          while (out.length < cnt && pool.length) {
+            const idx = Math.floor(Math.random() * pool.length);
+            out.push(pool.splice(idx, 1)[0]);
+          }
+          return out.sort((a, b) => a - b);
+        };
+        if (g.type === 'lotto') {
+          state.playMode = 'standard';
+          state.picker.dan = [];
+          state.picker.main = pickRand(g.mainRange[0], g.mainRange[1], g.mainPick);
+          state.picker.sub = g.subRange ? pickRand(g.subRange[0], g.subRange[1], g.subPick) : [];
+        } else {
+          if (state.playMode === 'direct') {
+            state.picker.pos = Array.from({ length: g.positions }, (_, i) => [Math.floor(Math.random() * ((g.id === 'qxc' && i === 6) ? 15 : 10))]);
+          } else {
+            state.picker.main = pickRand(0, 9, state.playMode === 'group3' ? 2 : 3);
+          }
+        }
+        renderBallPicker(g);
+      });
+
+      // Clear picker
+      document.getElementById('btnClearPick').addEventListener('click', () => {
+        resetPickerForGame(state.lotteries[state.activeId]);
+        renderBallPicker(state.lotteries[state.activeId]);
+      });
+
+      // Add to slip
+      document.getElementById('btnAddToSlip').addEventListener('click', () => {
+        const g = state.lotteries[state.activeId];
+        const bets = calcPickerBets(g);
+        if (bets <= 0) {
+          showToast('请先按玩法规则选满号码后再加入推盘单。', 'warn');
+          return;
+        }
+        state.slip.push({
+          gameId: g.id,
+          issue: g.nextIssue,
+          playMode: state.playMode,
+          main: state.picker.main.slice(),
+          dan: state.picker.dan.slice(),
+          sub: state.picker.sub.slice(),
+          pos: state.picker.pos.map(a => a.slice()),
+          bets
+        });
+        renderSlip();
+        showToast(`已将 ${g.name} 第${g.nextIssue}期 (${bets}注) 加入推盘单。`, 'success');
+      });
+
+      // Slip controls
+      document.getElementById('slipList').addEventListener('click', e => {
+        const btn = e.target.closest('[data-remove-slip]');
+        if (!btn) return;
+        state.slip.splice(Number(btn.dataset.removeSlip), 1);
+        renderSlip();
+      });
+
+      document.getElementById('btnClearSlip').addEventListener('click', () => {
+        state.slip = [];
+        renderSlip();
+      });
+
+      document.getElementById('btnMultMinus').addEventListener('click', () => {
+        state.multiplier = Math.max(1, state.multiplier - 1);
+        document.getElementById('inputMultiplier').value = state.multiplier;
+        renderSlip();
+      });
+
+      document.getElementById('btnMultPlus').addEventListener('click', () => {
+        state.multiplier = Math.min(99, state.multiplier + 1);
+        document.getElementById('inputMultiplier').value = state.multiplier;
+        renderSlip();
+      });
+
+      document.getElementById('inputMultiplier').addEventListener('input', e => {
+        state.multiplier = Math.max(1, Math.min(99, Number(e.target.value) || 1));
+        renderSlip();
+      });
+
+      document.getElementById('chkDltAppend').addEventListener('change', e => {
+        state.dltAppend = e.target.checked;
+        renderSlip();
+        updatePickerSummary(state.lotteries[state.activeId]);
+      });
+
+      // Save slip to review
+      document.getElementById('btnSaveSlipToReview').addEventListener('click', () => {
+        if (!state.slip.length) {
+          showToast('推盘单为空，请先选择号码或载入推荐方案。', 'warn');
+          return;
+        }
+        state.slip.forEach(t => {
+          const unit = (t.gameId === 'dlt' && state.dltAppend) ? 3 : 2;
+          state.reviews.unshift({
+            id: 'rev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            ...t,
+            multiplier: state.multiplier,
+            dltAppend: t.gameId === 'dlt' && state.dltAppend,
+            cost: t.bets * unit * state.multiplier,
+            status: 'pending',
+            prize: 0,
+            hitSummary: '',
+            drawResult: ''
+          });
+        });
+        state.slip = [];
+        persistState();
+        renderSlip();
+        renderReviews();
+        showToast('已保存至每日复盘区！开奖后点击“一键核对”即可查看是否命中。', 'success');
+      });
+
+      // Daily 3 Predicted Groups actions (delegated)
+      const makeTicketFromGroup = (g, grp) => {
+        if (g.type === 'lotto') {
+          return {
+            gameId: g.id, issue: g.nextIssue, playMode: 'standard',
+            main: grp.main.slice(), dan: [], sub: grp.sub.slice(), pos: [], bets: 1
+          };
+        } else {
+          const posArr = g.id === 'qxc'
+            ? [...grp.main.map(v => [v]), [grp.sub[0]]]
+            : grp.main.map(v => [v]);
+          return {
+            gameId: g.id, issue: g.nextIssue, playMode: 'direct',
+            main: [], dan: [], sub: [], pos: posArr, bets: 1
+          };
+        }
+      };
+
+      document.getElementById('dim4Daily3Groups').addEventListener('click', e => {
+        const g = state.lotteries[state.activeId];
+        if (e.target.closest('#btnSaveGame3ToReview')) {
+          (state._currentDaily3 || []).forEach(grp => {
+            const t = makeTicketFromGroup(g, grp);
+            state.reviews.unshift({
+              id: 'rev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+              ...t, multiplier: 1, dltAppend: false, cost: 2,
+              status: 'pending', prize: 0, hitSummary: '', drawResult: ''
+            });
+          });
+          persistState();
+          renderReviews();
+          showToast(`已将 ${g.name} 第${g.nextIssue}期 3 组预测号全部存入复盘区！`, 'success');
+          return;
+        }
+        if (e.target.closest('#btnSaveAll21ToReview')) {
+          let totalSaved = 0;
+          LOTTERY_ORDER.forEach(id => {
+            const gameObj = state.lotteries[id];
+            const an = computeAnalysis(gameObj);
+            an.daily3Groups.forEach(grp => {
+              const t = makeTicketFromGroup(gameObj, grp);
+              state.reviews.unshift({
+                id: 'rev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                ...t, multiplier: 1, dltAppend: false, cost: 2,
+                status: 'pending', prize: 0, hitSummary: '', drawResult: ''
+              });
+              totalSaved++;
+            });
+          });
+          persistState();
+          renderReviews();
+          showToast(`已将全部 7 大彩种各 3 组（共 ${totalSaved} 组）预测号存入复盘区！`, 'success');
+          return;
+        }
+        const loadBtn = e.target.closest('[data-load-daily3]');
+        const saveBtn = e.target.closest('[data-save-daily3]');
+        if (loadBtn) {
+          const grp = state._currentDaily3[Number(loadBtn.dataset.loadDaily3)];
+          if (g.type === 'lotto') {
+            state.playMode = 'standard';
+            state.picker.dan = [];
+            state.picker.main = grp.main.slice();
+            state.picker.sub = grp.sub.slice();
+          } else {
+            state.playMode = 'direct';
+            state.picker.pos = g.id === 'qxc'
+              ? [...grp.main.map(v => [v]), [grp.sub[0]]]
+              : grp.main.map(v => [v]);
+          }
+          renderBallPicker(g);
+          showToast(`已载入「组${grp.idx} · ${grp.tag}」至选号区！`, 'success');
+        } else if (saveBtn) {
+          const grp = state._currentDaily3[Number(saveBtn.dataset.saveDaily3)];
+          const t = makeTicketFromGroup(g, grp);
+          state.reviews.unshift({
+            id: 'rev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            ...t, multiplier: 1, dltAppend: false, cost: 2,
+            status: 'pending', prize: 0, hitSummary: '', drawResult: ''
+          });
+          persistState();
+          renderReviews();
+          showToast(`已将 ${g.name} 组${grp.idx} 存入复盘区！`, 'success');
+        }
+      });
+
+      // Combo plan actions
+      document.getElementById('btnRefreshPlans').addEventListener('click', () => {
+        state.planSeed++;
+        renderCenterWorkspace();
+        showToast('已刷新当期推荐组合矩阵。', 'success');
+      });
+
+      document.getElementById('comboPlansContainer').addEventListener('click', e => {
+        const loadBtn = e.target.closest('[data-load-plan]');
+        const saveBtn = e.target.closest('[data-save-plan]');
+        const g = state.lotteries[state.activeId];
+        if (loadBtn) {
+          const plan = state._currentPlans[Number(loadBtn.dataset.loadPlan)];
+          state.slip.push({
+            gameId: g.id, issue: g.nextIssue, playMode: plan.playMode,
+            main: plan.main.slice(), dan: plan.dan.slice(), sub: plan.sub.slice(),
+            pos: plan.pos.map(a => a.slice()), bets: plan.bets
+          });
+          renderSlip();
+          showToast(`已载入「${plan.title}」至推盘单。`, 'success');
+        } else if (saveBtn) {
+          const plan = state._currentPlans[Number(saveBtn.dataset.savePlan)];
+          state.reviews.unshift({
+            id: 'rev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            gameId: g.id, issue: g.nextIssue, playMode: plan.playMode,
+            main: plan.main.slice(), dan: plan.dan.slice(), sub: plan.sub.slice(),
+            pos: plan.pos.map(a => a.slice()), bets: plan.bets,
+            multiplier: 1, dltAppend: false, cost: plan.bets * 2,
+            status: 'pending', prize: 0, hitSummary: '', drawResult: ''
+          });
+          persistState();
+          renderReviews();
+          showToast(`已将「${plan.title}」存入复盘区！`, 'success');
+        }
+      });
+
+      // Review section actions (both right panel and modal)
+      document.getElementById('reviewFilterSelect').addEventListener('change', e => {
+        state.reviewFilter = e.target.value;
+        renderReviews();
+      });
+
+      const handleReviewClick = e => {
+        const chkBtn = e.target.closest('[data-check-review]');
+        const delBtn = e.target.closest('[data-delete-review]');
+        if (chkBtn) {
+          const r = state.reviews.find(x => x.id === chkBtn.dataset.checkReview);
+          if (!r) return;
+          const g = state.lotteries[r.gameId];
+          const matchDraw = g.history.find(h => h.issue === r.issue);
+          if (!matchDraw) {
+            showToast(`${g.name} 第${r.issue}期尚未录入开奖结果，请先在中间栏录入或点击“同步实时开奖”。`, 'warn');
+            return;
+          }
+          const res = evaluateTicketAgainstDraw(r, matchDraw);
+          r.status = res.hit ? 'hit' : 'miss';
+          r.prize = res.prize;
+          r.hitSummary = res.summary;
+          r.drawResult = matchDraw.main.map(v => pad2(v, g.type === 'lotto')).join(' ') + (matchDraw.sub.length ? ' + ' + matchDraw.sub.map(v => pad2(v, true)).join(' ') : '');
+          persistState();
+          renderReviews();
+          showToast(res.hit ? `🎉 命中！${g.name} 第${r.issue}期：${res.summary}，模拟奖金 ¥${res.prize.toLocaleString()}` : `${g.name} 第${r.issue}期未命中（开奖：${r.drawResult}）`, res.hit ? 'success' : 'warn');
+        } else if (delBtn) {
+          state.reviews = state.reviews.filter(x => x.id !== delBtn.dataset.deleteReview);
+          persistState();
+          renderReviews();
+        }
+      };
+      document.getElementById('reviewListContainer').addEventListener('click', handleReviewClick);
+      document.getElementById('modalReviewBody').addEventListener('click', handleReviewClick);
+
+      document.getElementById('btnOneClickCheckAll').addEventListener('click', checkAllPendingReviews);
+      document.getElementById('btnModalCheckAll').addEventListener('click', checkAllPendingReviews);
+
+      // Copy analysis report
+      document.getElementById('btnCopyReport').addEventListener('click', () => {
+        const g = state.lotteries[state.activeId];
+        const a = computeAnalysis(g);
+        const isL = g.type === 'lotto';
+        const d3Txt = a.daily3Groups.map(grp => `组${grp.idx}(${grp.tag})：${grp.main.map(v => pad2(v, isL)).join(' ')}${grp.sub.length ? ' + ' + grp.sub.map(v => pad2(v, true)).join(' ') : ''}`).join('\n');
+        const txt = `【${g.name} 第${g.nextIssue}期 四维推演报告】\n上期(${g.history[0].issue})开奖：${g.history[0].main.map(v => pad2(v, isL)).join(' ')}${g.history[0].sub.length ? ' + ' + g.history[0].sub.map(v => pad2(v, true)).join(' ') : ''}\n高频热码：${a.hotBalls.map(x => pad2(x.num, isL)).join(' ')}\n核心胆码：${a.danBalls.map(x => pad2(x, isL)).join(' ')}\n排雷杀号：${a.killBalls.map(x => pad2(x, isL)).join(' ')}\n近${g.history.length}期均值：和值 ${a.avgSum} / 跨度 ${a.avgSpan}\n当期3组精选预测：\n${d3Txt}\n（理性购彩，数据推演仅供参考）`;
+        copyTextSafe(txt, '已复制四维完整分析报告！');
+      });
+
+      document.getElementById('btnExportReviews').addEventListener('click', () => {
+        if (!state.reviews.length) { showToast('当前没有复盘记录可导出。', 'warn'); return; }
+        const txt = state.reviews.map(r => {
+          const g = state.lotteries[r.gameId];
+          return `[${g.name} ${r.issue}期] ${formatTicketNumbers(r)} | 投入¥${r.cost} | 状态:${r.status === 'hit' ? '命中¥' + r.prize + '(' + r.hitSummary + ')' : r.status === 'miss' ? '未命中' : '待开奖'}`;
+        }).join('\n');
+        copyTextSafe(txt, '已复制全部复盘汇总记录！');
+      });
+
+      document.getElementById('btnClearAllReviews').addEventListener('click', () => {
+        state.reviews = [];
+        persistState();
+        renderReviews();
+        showToast('已清空复盘记录。', 'warn');
+      });
+
+      // Top Modals & Sync
+      document.getElementById('btnSyncLive').addEventListener('click', runLiveSync);
+      document.getElementById('btnOpenImportModal').addEventListener('click', () => {
+        document.getElementById('inputScfUrl').value = state.syncConfig.scfUrl || '';
+        document.getElementById('inputLocalJsonUrl').value = state.syncConfig.localJsonUrl || './data/lottery_data.json';
+        document.getElementById('importModal').classList.remove('hidden');
+      });
+      document.getElementById('btnCloseImportModal').addEventListener('click', () => {
+        document.getElementById('importModal').classList.add('hidden');
+      });
+      document.getElementById('btnSaveSyncConfig').addEventListener('click', () => {
+        state.syncConfig.scfUrl = document.getElementById('inputScfUrl').value.trim();
+        state.syncConfig.localJsonUrl = document.getElementById('inputLocalJsonUrl').value.trim();
+        persistState();
+        document.getElementById('importModal').classList.add('hidden');
+        runLiveSync();
+      });
+      document.getElementById('btnParsePaste').addEventListener('click', () => {
+        const raw = document.getElementById('pasteImportArea').value;
+        const cnt = parsePastedWebText(raw);
+        if (cnt > 0) {
+          document.getElementById('pasteImportArea').value = '';
+          document.getElementById('importModal').classList.add('hidden');
+          renderAll();
+          showToast(`成功解析并更新 ${cnt} 条开奖记录，已同步核对复盘单并推进下期！`, 'success');
+        } else {
+          showToast('未能识别有效开奖行，请检查是否包含彩种名称与完整号码。', 'error');
+        }
+      });
+
+      document.getElementById('btnOpenReviewModal').addEventListener('click', () => {
+        renderReviews();
+        document.getElementById('reviewModal').classList.remove('hidden');
+      });
+      document.getElementById('btnCloseReviewModal').addEventListener('click', () => {
+        document.getElementById('reviewModal').classList.add('hidden');
+      });
+      document.getElementById('btnDateCalendar').addEventListener('click', () => {
+        document.getElementById('calendarModal').classList.remove('hidden');
+      });
+      document.getElementById('btnCloseCalendarModal').addEventListener('click', () => {
+        document.getElementById('calendarModal').classList.add('hidden');
+      });
+    }
+
+    function copyTextSafe(text, okMsg) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast(okMsg, 'success')).catch(() => fallbackCopy(text, okMsg));
+      } else {
+        fallbackCopy(text, okMsg);
+      }
+    }
+
+    function fallbackCopy(text, okMsg) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); showToast(okMsg, 'success'); }
+      catch (e) { showToast('复制失败，请手动选中复制。', 'error'); }
+      ta.remove();
+    }
+
+    // =========================================================================
+    // 8. INIT
+    // =========================================================================
+    loadPersistedState();
+    resetPickerForGame(state.lotteries[state.activeId]);
+    bindEvents();
+    renderAll();
+  </script>
+</body>
+</html>
