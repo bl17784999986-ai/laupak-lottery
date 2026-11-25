@@ -592,15 +592,7 @@
         <h3 class="text-base font-bold text-white">📅 体彩·福彩每周开奖日历（北京时间）</h3>
         <button id="btnCloseCalendarModal" type="button" class="text-slate-400 hover:text-white text-lg leading-none">✕</button>
       </div>
-      <div class="grid grid-cols-1 gap-2 text-xs">
-        <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">星期一</span><span class="text-emerald-300">大乐透(21:25) · 七乐彩(21:15) · 3D · 排列三/五</span></div>
-        <div class="bg-emerald-500/10 border border-emerald-500/40 rounded-lg p-2.5 flex justify-between"><span class="font-bold text-emerald-300">星期二（今日 11-24）</span><span class="text-white font-semibold">双色球(21:15) · 七星彩(21:25) · 3D · 排列三/五</span></div>
-        <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">星期三</span><span class="text-emerald-300">大乐透(21:25) · 七乐彩(21:15) · 3D · 排列三/五</span></div>
-        <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">星期四</span><span class="text-sky-300">双色球(21:15) · 3D · 排列三/五</span></div>
-        <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">星期五</span><span class="text-amber-300">七星彩(21:25) · 七乐彩(21:15) · 3D · 排列三/五</span></div>
-        <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">星期六</span><span class="text-emerald-300">大乐透(21:25) · 3D · 排列三/五</span></div>
-        <div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">星期日</span><span class="text-rose-300">双色球(21:15) · 七星彩(21:25) · 3D · 排列三/五</span></div>
-      </div>
+      <div id="calendarScheduleList" class="grid grid-cols-1 gap-2 text-xs"></div>
     </div>
   </div>
 
@@ -2874,7 +2866,46 @@
     // =========================================================================
     // 8. INIT
     // =========================================================================
+    function syncDynamicDaySchedule() {
+      const now = new Date();
+      const wd = now.getDay(); // 0=Sun..6=Sat
+      const mmdd = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const drawDaysMap = {
+        ssq: [2, 4, 0],
+        fc3d: [0, 1, 2, 3, 4, 5, 6],
+        qlc: [1, 3, 5],
+        dlt: [1, 3, 6],
+        qxc: [2, 5, 0],
+        pl3: [0, 1, 2, 3, 4, 5, 6],
+        pl5: [0, 1, 2, 3, 4, 5, 6]
+      };
+      LOTTERY_ORDER.forEach(id => {
+        if (state.lotteries[id]) {
+          state.lotteries[id].drawsToday = drawDaysMap[id].includes(wd);
+        }
+      });
+      const calRows = [
+        { d: 1, name: '星期一', desc: '大乐透(21:25) · 七乐彩(21:15) · 3D · 排列三/五', cls: 'text-emerald-300' },
+        { d: 2, name: '星期二', desc: '双色球(21:15) · 七星彩(21:25) · 3D · 排列三/五', cls: 'text-sky-300' },
+        { d: 3, name: '星期三', desc: '大乐透(21:25) · 七乐彩(21:15) · 3D · 排列三/五', cls: 'text-emerald-300' },
+        { d: 4, name: '星期四', desc: '双色球(21:15) · 3D · 排列三/五', cls: 'text-sky-300' },
+        { d: 5, name: '星期五', desc: '七星彩(21:25) · 七乐彩(21:15) · 3D · 排列三/五', cls: 'text-amber-300' },
+        { d: 6, name: '星期六', desc: '大乐透(21:25) · 3D · 排列三/五', cls: 'text-emerald-300' },
+        { d: 0, name: '星期日', desc: '双色球(21:15) · 七星彩(21:25) · 3D · 排列三/五', cls: 'text-rose-300' }
+      ];
+      const calEl = document.getElementById('calendarScheduleList');
+      if (calEl) {
+        calEl.innerHTML = calRows.map(r => {
+          const isToday = r.d === wd;
+          return isToday
+            ? `<div class="bg-emerald-500/10 border border-emerald-500/40 rounded-lg p-2.5 flex justify-between"><span class="font-bold text-emerald-300">${r.name}（今日 ${mmdd}）</span><span class="text-white font-semibold">${r.desc}</span></div>`
+            : `<div class="bg-[#0b121e] border border-[#1e2d44] rounded-lg p-2.5 flex justify-between"><span class="font-bold text-slate-200">${r.name}</span><span class="${r.cls}">${r.desc}</span></div>`;
+        }).join('');
+      }
+    }
+
     loadPersistedState();
+    syncDynamicDaySchedule();
     resetPickerForGame(state.lotteries[state.activeId]);
     bindEvents();
     renderAll();
