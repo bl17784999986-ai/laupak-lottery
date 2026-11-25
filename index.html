@@ -1369,6 +1369,49 @@
       }
     }
 
+    function formatTicketNumbersHighlighted(ticket) {
+      const g = state.lotteries[ticket.gameId];
+      const draw = g.history.find(h => h.issue === ticket.issue);
+      if (!draw || ticket.status === 'pending') return formatTicketNumbers(ticket);
+
+      const hitSpan = (txt) => `<span class="text-rose-400 font-extrabold bg-rose-500/20 px-1 rounded border border-rose-500/40">${txt}</span>`;
+      const isL = g.type === 'lotto';
+
+      if (isL) {
+        const winM = new Set(draw.main || []);
+        const winS = new Set(draw.sub || []);
+        const fmtMain = (arr) => arr.map(n => {
+          const s = pad2(n, true);
+          const isHit = winM.has(n) || (ticket.gameId === 'qlc' && winS.has(n));
+          return isHit ? hitSpan(s) : s;
+        }).join(' ');
+        const mainHtml = ticket.playMode === 'dantuo'
+          ? `(胆 ${fmtMain(ticket.dan)}) 拖 ${fmtMain(ticket.main)}`
+          : fmtMain(ticket.main);
+        const subHtml = ticket.sub && ticket.sub.length
+          ? ' + ' + ticket.sub.map(n => {
+              const s = pad2(n, true);
+              return winS.has(n) ? hitSpan(s) : s;
+            }).join(' ')
+          : '';
+        return mainHtml + subHtml;
+      } else {
+        if (ticket.playMode === 'direct') {
+          return ticket.pos.map((arr, idx) => {
+            const target = (ticket.gameId === 'qxc' && idx === 6) ? (draw.sub || [])[0] : (draw.main || [])[idx];
+            const inner = arr.map(n => {
+              const s = (ticket.gameId === 'qxc' && idx === 6) ? pad2(n, true) : String(n);
+              return n === target ? hitSpan(s) : s;
+            }).join(',');
+            return arr.length > 1 ? `[${inner}]` : inner;
+          }).join(' | ');
+        } else {
+          const winM = new Set(draw.main || []);
+          return ticket.main.map(n => winM.has(n) ? hitSpan(String(n)) : String(n)).join(' ');
+        }
+      }
+    }
+
     function formatTicketNumbers(ticket) {
       const g = state.lotteries[ticket.gameId];
       const isL = g.type === 'lotto';
@@ -2064,7 +2107,7 @@
               <span class="font-bold text-slate-100">${g.name} <span class="text-slate-400 font-mono text-[10px]">${r.issue}期</span></span>
               ${badge}
             </div>
-            <div class="font-mono text-[11px] text-sky-300 break-all mb-1">${formatTicketNumbers(r)}</div>
+            <div class="font-mono text-[11px] text-sky-300 break-all mb-1">${formatTicketNumbersHighlighted(r)}</div>
             ${r.drawResult ? `<div class="text-[10px] text-amber-300/90 font-mono mb-1">开奖号：${r.drawResult} (${r.hitSummary})</div>` : ''}
             <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-[#152033]">
               <span>${getPlayModeLabel(r.gameId, r.playMode)} · 投入¥${r.cost}</span>
