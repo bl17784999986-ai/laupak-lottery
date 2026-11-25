@@ -1371,10 +1371,14 @@
 
     function formatTicketNumbersHighlighted(ticket) {
       const g = state.lotteries[ticket.gameId];
-      const draw = g.history.find(h => h.issue === ticket.issue);
+      let draw = g.history.find(h => String(h.issue) === String(ticket.issue));
+      if (!draw && ticket.drawResult) {
+        const parsed = parseDrawString(g, ticket.drawResult);
+        if (parsed) draw = parsed;
+      }
       if (!draw || ticket.status === 'pending') return formatTicketNumbers(ticket);
 
-      const hitSpan = (txt) => `<span class="text-rose-400 font-extrabold bg-rose-500/20 px-1 rounded border border-rose-500/40">${txt}</span>`;
+      const hitSpan = (txt) => `<span style="color:#ff4d6d;background:rgba(244,63,94,0.22);border:1px solid rgba(244,63,94,0.6);padding:0 4px;border-radius:4px;font-weight:800;">${txt}</span>`;
       const isL = g.type === 'lotto';
 
       if (isL) {
