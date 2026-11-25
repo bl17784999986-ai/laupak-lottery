@@ -160,7 +160,7 @@
           </div>
           <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 flex-wrap">
             <button id="btnDateCalendar" type="button" class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#142033] border border-[#243652] text-slate-200 hover:border-emerald-500/50 transition">
-              <span>📅 2026-11-24 星期二</span>
+              <span id="headerDateLabel">📅 2026-11-25</span>
               <span class="text-emerald-400">开奖日历 ▾</span>
             </button>
             <span id="syncStatusText" class="text-emerald-400/90">• 已加载官方库数据 (7大彩种 · 实时统计)</span>
@@ -2212,10 +2212,14 @@
       }
 
       let synced = false;
+      let scfFailReason = '';
       for (const ep of endpoints) {
         try {
           const resp = await fetch(ep.url, { cache: 'no-store' });
-          if (!resp.ok) continue;
+          if (!resp.ok) {
+            if (ep.name.includes('SCF')) scfFailReason = `HTTP ${resp.status}`;
+            continue;
+          }
           const payload = await resp.json();
           const dataMap = payload.lotteries || payload;
           let updatedGames = 0;
@@ -2234,11 +2238,18 @@
             renderAll();
             const nowStr = new Date().toLocaleTimeString('zh-CN', { hour12: false });
             document.getElementById('syncStatusText').textContent = `• 已通过${ep.name}同步 (${updatedGames}彩种 · ${nowStr})`;
-            showToast(`${ep.name}实时同步成功！已更新 ${updatedGames} 个彩种最新开奖与下期预测。`, 'success');
+            if (scfFailReason && !ep.name.includes('SCF')) {
+              showToast(`腾讯云 SCF 请求失败（${scfFailReason}），已自动回退到${ep.name}。`, 'warn');
+            } else {
+              showToast(`${ep.name}实时同步成功！已更新 ${updatedGames} 个彩种最新开奖与下期预测。`, 'success');
+            }
             break;
+          } else if (ep.name.includes('SCF')) {
+            const errKeys = payload.errors ? Object.entries(payload.errors).map(([k, v]) => `${k}:${v}`).slice(0, 2).join('; ') : '返回lotteries为空';
+            scfFailReason = errKeys || '返回lotteries为空';
           }
         } catch (err) {
-          // Try next endpoint gracefully
+          if (ep.name.includes('SCF')) scfFailReason = err.message || '网络/CORS拦截';
         }
       }
 
@@ -2302,7 +2313,15 @@
     // 7. EVENT LISTENERS & DELEGATION
     // =========================================================================
     function bindEvents() {
-      // Live clock
+      // Dynamic header date & live clock
+      const updateHeaderDate = () => {
+        const now = new Date();
+        const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+        const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const el = document.getElementById('headerDateLabel');
+        if (el) el.textContent = `📅 ${ymd} ${days[now.getDay()]}`;
+      };
+      updateHeaderDate();
       setInterval(() => {
         document.getElementById('liveClock').textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
       }, 1000);
